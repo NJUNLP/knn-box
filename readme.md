@@ -16,9 +16,9 @@ We provide reference implementations of various papers:
 ### Features:
 * very small amount of code to build a datastore and apply it
 * Treat various KNN systems as three modules
-  - datastore
-  - retriever
-  - integrator
+  - datastore: build or load datastore
+  - retriever: retrieve key value pairs from datastore with query
+  - integrator: caclulate knn probability and combine knn probability with neural model probability
 
     You only need to modify individual module you care about to implement new ideas, instead of implementing the entire KNN system from scratch
 * The pre implement retrievers are based on faiss-gpu, which has fast retrieve speed
