@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 
-libds is a toolkit allows researchers and developers to easily build datastore and then embed the datastore into existing neural machine translation models or other neural network models.
+libds is a toolkit allows researchers and developers to **easily** build datastore and embed the datastore into existing neural machine translation models or other neural network models.
 
 This library is highly inspired by KNN-LM, adaptive KNN-MT's code.
 
@@ -20,13 +20,12 @@ We provide reference implementations of various papers:
   - retriever
   - integrator
 
-    You only need to modify the modules you care about to implement new ideas, instead of implementing the entire KNN system from scratch
+    You only need to modify individual module you care about to implement new ideas, instead of implementing the entire KNN system from scratch
 * The pre implement retrievers are based on faiss-gpu, which has fast retrieve speed
 * Not only KNN-MT, this library can be used to build KNN-LM and other KNN neural models.
 
 
 # Getting Started
-
 ## how to install it
 Just copy this libds folder to your project folder.
 
