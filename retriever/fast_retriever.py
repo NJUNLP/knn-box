@@ -1,4 +1,4 @@
-from ..retriever import Retriever
+from . import Retriever
 from ..datastore import Datastore
 from ..utils import retrieve_k_nearest
 import numpy as np

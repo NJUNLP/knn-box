@@ -6,7 +6,6 @@ import time
 import torch
 
 global_datastores = {}
-global_integrators = {}
 
 def get_registered_datastore(name):
     if name in global_datastores:
@@ -16,22 +15,6 @@ def get_registered_datastore(name):
 
 def registe_datastore(name, datastore):
     global_datastores[name] = datastore
-
-def get_registered_integrators(name):
-    if name in global_integrators:
-        return global_integrators[name]
-    else:
-        return None
-
-def registe_integrator(name, integrator):
-    global_integrators[name] = integrator
-
-
-# load a datastore from disk
-def load_datastore(path, datastore_type):
-    return datastore_type.load(path)
-    
-
 
 
 def read_config(path):
@@ -214,13 +197,13 @@ def keys_mask_select(keys, mask):
 
 
 def disable_model_grad(model):
-    r""" disable whole model's grad """
+    r""" disable whole model's gradient """
     for name, param in model.named_parameters():
         param.requires_grad = False
 
 
 def enable_module_grad(model, module_name):
-    r""" enable a module by module name"""
+    r""" enable a module's gridient caclulation by module name"""
     for name, param in model.named_parameters():
         if module_name in name:
             param.requires_grad = True

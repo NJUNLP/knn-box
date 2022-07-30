@@ -1,33 +1,19 @@
 from ..utils import retrieve_k_nearest
-from ..utils.cache import TensorCache
 import torch
 
 class Retriever:
-    def __init__(self, datastore, k, return_keys=False, enable_cache=False):
+    def __init__(self, datastore, k):
         self.datastore = datastore
         self.k = k
-        self.return_keys = return_keys
         self.results = None
-        self.enable_cache = enable_cache   
-        self.cache = TensorCache() if enable_cache else None
 
 
     def retrieve(self, query, return_keys=False, return_query=False):
+        r""" retrieve the datastore and return results """
+
         if self.datastore.faiss_index is None:
             self.datastore.load_faiss_index(move_to_gpu=True)
-        
-        # if self.enable_cache:
-        #     cache_results = self.cache.get(query)
-        #     if cache_results is None:
-        #         results = retrieve_k_nearest(query, self.datastore.faiss_index, self.k)
-        #         distances = results["distances"]
-        #         indices = results["indices"].cpu().numpy()
-        #         content = {"distances": distances, "indices": indices}
-        #         self.cache.set(query, content)
-        #     else:
-        #         distances = cache_results["distances"]
-        #         indices = cache_results["indices"]
-        # else:
+         
         results = retrieve_k_nearest(query, self.datastore.faiss_index, self.k)
         distances = results["distances"]
         indices = results["indices"].cpu().numpy()
@@ -45,7 +31,8 @@ class Retriever:
         ret["distances"] = distances.to(query.device)
         ret["k"] = self.k
         self.results = ret
-        return ret        
+        return ret
+   
     
     @staticmethod
     def load(path):
@@ -58,4 +45,5 @@ class Retriever:
         r"""
         save a retriever to disk
         """
+        pass
         

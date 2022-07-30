@@ -5,7 +5,7 @@ import math
 import os
 
 
-class AdaptiveIntegrator(nn.Module):
+class AdaptiveCombiner(nn.Module):
     def __init__(self, probability_dim, model = None, max_k = 32):
         super().__init__()
         if model is None:
@@ -43,13 +43,13 @@ class AdaptiveIntegrator(nn.Module):
 
 
 
-    def get_integrated_prob(self, knn_prob, neural_model_logit, log_probs=False):
+    def get_combined_prob(self, knn_prob, neural_model_logit, log_probs=False):
         # the policy to combine knn_prob and neural_model_prob
         neural_model_prob = F.softmax(neural_model_logit, dim=-1)
-        integrated_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
+        combined_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
         if log_probs:
-            integrated_probs =  torch.log(integrated_probs)
-        return integrated_probs
+            combined_probs =  torch.log(combined_probs)
+        return combined_probs
     
 
 
@@ -87,19 +87,19 @@ class AdaptiveIntegrator(nn.Module):
     @staticmethod
     def load(path):
         r"""
-        load an adaptiveIntegrator from disk
+        load an AdaptiveCombiner from disk
         """
         
         with open(os.path.join(path, "model.pt"), "rb") as f:
             state_dict = torch.load(f)
         model = MetaKNetwork()
         model.load_state_dict(state_dict)
-        return AdaptiveIntegrator(model)  
+        return Adaptivecombiner(model)  
     
     
     def dump(self, path):
         r"""
-        save the integrator to disk
+        save the AdaptiveCombiner to disk
         """
         # TODO:  config写入
         # create folder if not exist

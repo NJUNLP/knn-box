@@ -1,7 +1,7 @@
 import os
 import json
-from ..utils.memmap import Memmap
-from ..utils.utils import read_config, build_faiss_index, load_faiss_index, write_config 
+from ..utils import Memmap, read_config, build_faiss_index, load_faiss_index, write_config 
+
 
 class Datastore:
     r"""

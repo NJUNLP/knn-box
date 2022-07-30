@@ -1,2 +1,0 @@
-#automatic capcity expansion ndarray
-

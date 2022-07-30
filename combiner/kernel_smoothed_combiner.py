@@ -5,11 +5,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import os
-from libds.utils.utils import read_config, write_config
+from ..utils import read_config, write_config
 
-class KernelSmoothedIntegrator(nn.Module):
+class KernelSmoothedCombiner(nn.Module):
     r"""
-    kernel smoothed integrator"""
+    kernel smoothed combiner"""
 
     def __init__(self, query_dim, probability_dim, bandwidth_estimator=None, weight_estimator=None, device='cuda:0', kernel_type='laplacian'):
         super().__init__()
@@ -75,6 +75,16 @@ class KernelSmoothedIntegrator(nn.Module):
         self.lambda_ = self.weight_estimator(query, weighted_sum_key)
         return knn_probs
 
+
+    def get_combined_prob(self, knn_prob, neural_model_logit, log_probs=False):
+        r""" 
+        strategy of combine probability """
+        neural_model_prob = F.softmax(neural_model_logit, dim=-1)
+        combined_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
+        if log_probs:
+            combined_probs =  torch.log(combined_probs)
+        return combined_probs
+
     @staticmethod
     def load(path):
         r"""
@@ -95,6 +105,8 @@ class KernelSmoothedIntegrator(nn.Module):
         return KernelSmoothedIntegrator(query_dim, probability_dim, 
             bandwidth_estimator=bandwidth_model, weight_estimator=weight_model,kernel_type=kernel_type)
 
+
+
     def dump(self, path):
         r"""
         dump a kernel smoothed integrator to disk"""
@@ -105,16 +117,6 @@ class KernelSmoothedIntegrator(nn.Module):
         write_config(path, config)
         torch.save(self.bandwidth_estimator.state_dict(), os.path.join(path, "bandwidth_estimator.pt"))
         torch.save(self.weight_estimator.state_dict(), os.path.join(path, "weight_estimator.pt"))
-
-
-    def get_integrated_prob(self, knn_prob, neural_model_logit, log_probs=False):
-        r""" 
-        strategy of combine probability """
-        neural_model_prob = F.softmax(neural_model_logit, dim=-1)
-        integrated_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
-        if log_probs:
-            integrated_probs =  torch.log(integrated_probs)
-        return integrated_probs
 
 
 

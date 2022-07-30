@@ -1,8 +1,10 @@
 import torch
 import torch.nn.functional as F
-class Integrator:
+
+
+class Combiner:
     r"""
-    A simple Integrator"""
+    A simple Combiner"""
 
     def __init__(self, lambda_, temperature, probability_dim):
         self.lambda_ = lambda_
@@ -30,11 +32,11 @@ class Integrator:
         return knn_probs
 
     
-    def get_integrated_prob(self, knn_prob, neural_model_logit, log_probs=False):
+    def get_combined_prob(self, knn_prob, neural_model_logit, log_probs=False):
         r""" 
         strategy of combine probability """
         neural_model_prob = F.softmax(neural_model_logit, dim=-1)
-        integrated_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
+        combined_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
         if log_probs:
-            integrated_probs =  torch.log(integrated_probs)
-        return integrated_probs
+            combined_probs =  torch.log(combined_probs)
+        return combined_probs
