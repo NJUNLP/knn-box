@@ -34,7 +34,7 @@ class Datastore:
 
         # create folder if not exist
         if not os.path.exists(path):
-            os.mkdir(path)
+            os.makedirs(path)
         
         if keys is not None:
             self.keys = keys

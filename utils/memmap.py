@@ -59,7 +59,9 @@ class Memmap:
 
 
     def dump(self):
+        print("saving...")
         self.trim()
+        print("save down.")
         
 
 

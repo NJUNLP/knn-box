@@ -11,9 +11,9 @@ We provide reference implementations of various papers:
 * **Adaptive KNN-MT**
   + [ Adaptive Nearest Neighbor Machine Translation (Zheng et al., 2019)](https://arxiv.org/abs/2105.13022v1)
 * **Kernel Smoothed KNN-MT**
-  + [Learning Kernel-Smoothed Machine Translation with Retrieved Examples](https://arxiv.org/abs/2109.09991)
+  + [Learning Kernel-Smoothed Machine Translation with Retrieved Examples](https://arxiv.org/abs/2109.09991
 
-### Features:
+# Features:
 * Very small amount of code to build a datastore and apply it
 * Easy to modify some compoents and implment new idea
 * Treat various KNN systems as three modules
@@ -27,6 +27,11 @@ We provide reference implementations of various papers:
 
 
 # Getting Started
+## !!Attention
+If you don't want to know how to use libds library but **just want to use our pre-implemeted knn models**(vanilla knn-mt, adaptive knn-mt, etc.).
+use [libds-exmaples](https://github.com/ZhaoQianfeng/libds-examples) instead, follow it's instrcutions and it will save your time.
+
+If you still want to know how libds works and how to implement your own knn models using libds, Please read on.
 ## how to install libds
 Just copy this libds folder to your project folder.
 
@@ -129,12 +134,11 @@ You can  implement new datastore/retriever/integrator to build your novel knn mo
 
 # Pre-trained models and examples
 
-We provide pre-build datastores and pre-trained adaptive knn-mt model, kernel smoothed model.
+We provide pre-build datastores and pre-trained adaptive knn-mt model, kernel smoothed models.
 
-* 
+* TODO
 
 # License
 
 libds is MIT-licensed.
 The license applies to the pre-trained models as well.
-```

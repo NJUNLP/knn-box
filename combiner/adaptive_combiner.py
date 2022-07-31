@@ -3,10 +3,11 @@ from torch import nn
 import torch.nn.functional as F
 import math
 import os
+from ..utils import read_config, write_config
 
 
 class AdaptiveCombiner(nn.Module):
-    def __init__(self, probability_dim, model = None, max_k = 32):
+    def __init__(self, probability_dim, model = None, max_k = 32, temperature = 10):
         super().__init__()
         if model is None:
             # use meta K network
@@ -17,7 +18,7 @@ class AdaptiveCombiner(nn.Module):
         # make it gpu
         self.model.cuda()
         self.max_k = max_k
-        self.temperature = 10 # TODO: 这一块应该整成参数?
+        self.temperature = temperature
         self.probability_dim = probability_dim
         self.lambda_ = None
         self.knn_prob = None
@@ -92,20 +93,31 @@ class AdaptiveCombiner(nn.Module):
         
         with open(os.path.join(path, "model.pt"), "rb") as f:
             state_dict = torch.load(f)
+        config = read_config(path)
+
         model = MetaKNetwork()
         model.load_state_dict(state_dict)
-        return Adaptivecombiner(model)  
+        return AdaptiveCombiner(
+            model=model, 
+            probability_dim = config["probability_dim"],
+            max_k = config["max_k"],
+            temperature = config["temperature"],
+            )
     
     
     def dump(self, path):
         r"""
         save the AdaptiveCombiner to disk
         """
-        # TODO:  config写入
         # create folder if not exist
         if not os.path.exists(path):
-            os.mkdir(path)
-        torch.save(self.state_dict(), os.path.join(path, "model.pt"))
+            os.makedirs(path)
+        config = {}
+        config["probability_dim"] = self.probability_dim
+        config["max_k"] = self.max_k
+        config["temperature"] = self.temperature
+        write_config(path, config)
+        torch.save(self.model.state_dict(), os.path.join(path, "model.pt"))
 
 
 

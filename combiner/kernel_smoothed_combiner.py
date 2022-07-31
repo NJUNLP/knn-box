@@ -90,7 +90,6 @@ class KernelSmoothedCombiner(nn.Module):
         r"""
         load kernel smoothed integrator from disk"""
         config = read_config(path)
-        print(config)
         query_dim = config["query_dim"]
         probability_dim = config["probability_dim"]
         kernel_type = config["kernel_type"]
@@ -110,6 +109,8 @@ class KernelSmoothedCombiner(nn.Module):
     def dump(self, path):
         r"""
         dump a kernel smoothed integrator to disk"""
+        if not os.path.exists(path):
+            os.makedirs(path)
         config = {}
         config["query_dim"] = self.query_dim
         config["probability_dim"] = self.probability_dim
