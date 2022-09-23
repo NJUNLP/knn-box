@@ -1,4 +1,4 @@
-In this tutorial, we will show you how to build a adaptive knn-mt system from scratch with libds. we use WMT19 DE-EN transformer model as our base model, and multi-domain DE-EN dataset. In this tutorial, we only focus on the `Medical` domain.
+In this tutorial, we will show you how to build a adaptive knn-mt system from scratch with knnbox. we use WMT19 DE-EN transformer model as our base model, and multi-domain DE-EN dataset. In this tutorial, we only focus on the `Medical` domain.
 
 adaptive knn-mt is similar to vanilla knn-mt except for a different combiner. adaptive knn-mt's combiner contains a small neural network to caclulate k, temperate, lambda parameters, and we should train this network.
 
@@ -13,12 +13,12 @@ same to vanilla knn-mt, if you don't know how to build it, read last tutorial.
 
 ## stage 2. train meta-k network
 open **fairseq/models/transformer.py**
-same to vanilla knn-mt, we declare retriver and combiner first. here we use AdaptiveCombiner
+same to vanilla knn-mt, we declare retriver and combiner first. here we use `AdaptiveCombiner`
 ```python
-from libds.datastore import Datastore
-from libds.retriever import Retriever
-from libds.combiner import AdaptiveCombiner
-ds = Datastore.load("/data1/zhaoqf/Retrieval-Enhanced-QE-main/libds_datastore/medical")
+from knnbox.datastore import Datastore
+from knnbox.retriever import Retriever
+from knnbox.combiner import AdaptiveCombiner
+ds = Datastore.load("/data1/zhaoqf/datastores/wmt19_medical")
 retriever = Retriever(datastore=ds, k=32)
 ```
 
@@ -33,7 +33,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
 
 when we train meta-k network, we should only enable the meta-k network gridient, so in the end of Transformer __init__ fucntion:
 ```python
-from libds.utils import disable_model_grad, enable_module_grad
+from knnbox.utils import disable_model_grad, enable_module_grad
 class TransformerModel(FairseqEncoderDecoderModel):
     def __init__( ... ):
         ...
@@ -45,19 +45,17 @@ before our program exit, we should dump the combiner to disk, so we add a __del_
 ```python
 class TransformerModel():
     def __del__(self):
-        self.decoder.combiner.dump("/data1/zhaoqf/Retrieval-Enhanced-QE-main/libds_combiner/medical")
+        self.decoder.combiner.dump("/data1/zhaoqf/combiners/adaptive/medical")
 ```
 
 ok, now run the normal train script of fariseq to train meta-k:
 ```bash
-RESOURCE=/data1/zhaoqf/adaptive-knn-mt
-RESOURCE_MODEL=/data1/zhaoqf/adaptive-knn-mt/wmt19.de-en/wmt19.de-en.ffn8192.pt
-SAVE_DIR=/data1/zhaoqf/Retrieval-Enhanced-QE-main/libds_combiner/medical
-DATA_PATH=$RESOURCE/data-bin/medical
-PROJECT_PATH=/data1/zhaoqf/Retrieval-Enhanced-QE-main
+PROJECT=../../.
+BASE_MODEL=$PROJECT/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
+DATA_PATH=$PROJECT/data-bin/medical
 
-# using the paper settings 
-CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
+# using paper's settings
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --task translation --arch transformer_wmt19_de_en \
 --train-subset valid \
 --max-epoch 80 \
@@ -71,24 +69,23 @@ CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --batch-size 4 \
 --update-freq 8 \
 --disable-validation \
---save-dir $SAVE_DIR
 ```
 
 ## stage 3. inference
 open **fairseq/models/transformer.py**
 same to vanilla knn-mt but load a AdaptiveCombiner from disk.
 ```python
-from libds.datastore import Datastore
-from libds.retriever import Retriever
-from libds.combiner import AdaptiveCombiner
-ds = Datastore.load("/data1/zhaoqf/Retrieval-Enhanced-QE-main/libds_datastore/medical")
+from knnbox.datastore import Datastore
+from knnbox.retriever import Retriever
+from knnbox.combiner import AdaptiveCombiner
+ds = Datastore.load("/data1/zhaoqf/datstores/wmt19_medical")
 retriever = Retriever(datastore=ds, k=32)
 ```
 in the decoder __init__ function, load the trained combiner from disk:
 class TransformerDecoder(FairseqIncrementalDecoder):
     def __init__( ... ):
         ...
-        self.combiner = AdaptiveCombiner.load("/data1/zhaoqf/Retrieval-Enhanced-QE-main/libds_combiner/medical")
+        self.combiner = AdaptiveCombiner.load("/data1/zhaoqf/combiners/adaptive/medical")
 ```
 
 all of the other modification are same as vanilla knn-mt: `forward function`, `get_normalized_probs`.
