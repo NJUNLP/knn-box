@@ -1,0 +1,9 @@
+cffi
+cython
+dataclasses
+hydra-core
+numpy
+regex
+sacrebleu>=1.4.12
+torch
+tqdm
