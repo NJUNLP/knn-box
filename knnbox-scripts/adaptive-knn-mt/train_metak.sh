@@ -29,6 +29,5 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --batch-size 4 \
 --update-freq 8
 
-## --keep-best-checkpoints 1 \
 ## recover environment variable
 export MODE=""
