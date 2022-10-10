@@ -5,13 +5,18 @@
 
 import unicodedata
 
+import sacrebleu as sb
+
+from fairseq.dataclass import ChoiceEnum
+
+SACREBLEU_V2_ABOVE = int(sb.__version__[0]) >= 2
+
 
 class EvaluationTokenizer(object):
     """A generic evaluation-time tokenizer, which leverages built-in tokenizers
     in sacreBLEU (https://github.com/mjpost/sacrebleu). It additionally provides
     lowercasing, punctuation removal and character tokenization, which are
     applied after sacreBLEU tokenization.
-
     Args:
         tokenizer_type (str): the type of sacreBLEU tokenizer to apply.
         lowercase (bool): lowercase the text.
@@ -22,7 +27,12 @@ class EvaluationTokenizer(object):
 
     SPACE = chr(32)
     SPACE_ESCAPE = chr(9601)
-    ALL_TOKENIZER_TYPES = ["none", "13a", "intl", "zh", "ja-mecab"]
+    _ALL_TOKENIZER_TYPES = (
+        sb.BLEU.TOKENIZERS
+        if SACREBLEU_V2_ABOVE
+        else ["none", "13a", "intl", "zh", "ja-mecab"]
+    )
+    ALL_TOKENIZER_TYPES = ChoiceEnum(_ALL_TOKENIZER_TYPES)
 
     def __init__(
         self,
@@ -31,13 +41,17 @@ class EvaluationTokenizer(object):
         punctuation_removal: bool = False,
         character_tokenization: bool = False,
     ):
-        from sacrebleu.tokenizers import TOKENIZERS
 
-        assert tokenizer_type in self.ALL_TOKENIZER_TYPES
+        assert (
+            tokenizer_type in self._ALL_TOKENIZER_TYPES
+        ), f"{tokenizer_type}, {self._ALL_TOKENIZER_TYPES}"
         self.lowercase = lowercase
         self.punctuation_removal = punctuation_removal
         self.character_tokenization = character_tokenization
-        self.tokenizer = TOKENIZERS[tokenizer_type]
+        if SACREBLEU_V2_ABOVE:
+            self.tokenizer = sb.BLEU(tokenize=str(tokenizer_type)).tokenizer
+        else:
+            self.tokenizer = sb.tokenizers.TOKENIZERS[tokenizer_type]()
 
     @classmethod
     def remove_punctuation(cls, sent: str):
@@ -49,7 +63,7 @@ class EvaluationTokenizer(object):
         )
 
     def tokenize(self, sent: str):
-        tokenized = self.tokenizer()(sent)
+        tokenized = self.tokenizer(sent)
 
         if self.punctuation_removal:
             tokenized = self.remove_punctuation(tokenized)

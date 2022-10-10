@@ -19,6 +19,10 @@ from torch.serialization import default_restore_location
 
 logger = logging.getLogger(__name__)
 
+MODE = os.environ["MODE"]
+if MODE == "train_kster" or MODE == "train_metak":
+    COMBINER_SAVE_PATH = os.environ["COMBINER_SAVE_PATH"]
+
 
 def save_checkpoint(args, trainer, epoch_itr, val_loss):
     from fairseq import distributed_utils, meters
@@ -86,10 +90,8 @@ def save_checkpoint(args, trainer, epoch_itr, val_loss):
     ]
     if len(checkpoints) > 0:
         ## knn-box add code >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        MODE = os.environ["MODE"]
         if MODE == "train_kster" or MODE == "train_metak":
             if checkpoint_conds["checkpoint_best{}.pt".format(suffix)]:
-                COMBINER_SAVE_PATH = os.environ["COMBINER_SAVE_PATH"]
                 trainer.model.decoder.combiner.dump(COMBINER_SAVE_PATH)
                 logger.info("dumped combiner to {}".format(COMBINER_SAVE_PATH))
         # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
