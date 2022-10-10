@@ -20,7 +20,6 @@ In this toolkit, we provide reference implementations of various papers:
 * faiss-gpu >= 1.6.5
 * sacremoses == 0.0.41
 * sacrebleu == 1.5.1
-* pytorch_scatter = 2.0.5
 * 1.19.0 <= numpy < 1.20.0
 
 You can install this toolkit by
