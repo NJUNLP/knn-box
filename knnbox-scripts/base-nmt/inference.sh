@@ -15,7 +15,6 @@ CUDA_VISIBLE_DEVICES=5 python $PROJECT_PATH/fairseq_cli/generate.py $DATA_PATH \
 --beam 4 --lenpen 0.6 --max-len-a 1.2 --max-len-b 10 --source-lang de --target-lang en \
 --gen-subset test \
 --model-overrides "{'eval_bleu': False, 'required_seq_len_multiple':1, 'load_alignments': False}" \
---skip-invalid-size-inputs-valid-test \
 --max-tokens 1024 \
 --max-tokens-valid 10000 \
 --scoring sacrebleu \
