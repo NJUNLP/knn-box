@@ -15,8 +15,8 @@ In this toolkit, we provide reference implementations of various papers:
 * extensible: easy to develope new kNN-MT models with our toolkit.
 
 ## Requirements and Installation
-* pytorch version >= 1.5.0
-* python version >= 3.6
+* python >= 3.6
+* pytorch >= 1.5.0
 * faiss-gpu >= 1.6.5
 * sacremoses == 0.0.41
 * sacrebleu == 1.5.1
@@ -101,12 +101,14 @@ bash inference.sh
 ![](https://s1.ax1x.com/2022/07/30/vioW4K.png)
 
 ## Visualize the kNN-MT translation process
-To get a web page to visualize vanilla knn-mt translation process, install the requirements:
+with knnbox, you can easily obtain a web page to visualize the kNN-MT translation process interactively, and the web page will also display some useful information about the constructed datastore. 
+
+Install the requirements:
 * streamlit >= 1.13.0
-* pandas >= 1.3.5,
-* matplotlib >= 3.5.3,
-* seaborn >= 0.12.1,
-* altair >= 4.2.0,
+* pandas >= 1.3.5
+* matplotlib >= 3.5.3
+* seaborn >= 0.12.1
+* altair >= 4.2.0
 * scikit-learn >= 1.0.2
 
 and then execute the following command:
@@ -120,7 +122,7 @@ vim model_configs.yml #Refer to the example configuration to modify.
 # step 3. lanuch the web page
 bash start_app.sh
 ```
-You will get a web page look like this
+You will obtain a web page look like this. Have fun playing with it.
 ![](https://s1.ax1x.com/2022/11/15/zVMxtx.png)
 ![](https://s1.ax1x.com/2022/11/15/zVQKgS.png)
 
