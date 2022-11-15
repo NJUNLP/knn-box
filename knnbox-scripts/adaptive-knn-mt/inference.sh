@@ -1,19 +1,16 @@
-## adaptive knn mt inference.
-## dataset: multi domain DE-EN dataset (medical domain)
-## base model: WMT19 DE-EN
+:<<!
+[script description]: use adaptive-knn-mt to translate 
+[dataset]: multi domain DE-EN dataset
+[base model]: WMT19 DE-ENscript
+!
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/it
-
-export MODE=adaptive_knn_inference
-export DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/it
-export PROBABILITY_DIM=42024
-export K=16
-export COMBINER_LOAD_PATH=$PROJECT_PATH/save-models/combiner/adaptive/it
+DATA_PATH=$PROJECT_PATH/data-bin/medical
+COMBINER_LOAD_DIR=$PROJECT_PATH/save-models/combiner/adaptive/medical
 
 
-CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/generate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
 --dataset-impl mmap \
@@ -23,7 +20,10 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/generate.py $DATA_PATH \
 --max-tokens 1024 \
 --max-tokens-valid 10000 \
 --scoring sacrebleu \
---tokenizer moses --remove-bpe
-
-# recover environment variable
-export MODE=""
+--tokenizer moses --remove-bpe \
+--arch adaptive_knn_mt@transformer_wmt19_de_en \
+--user-dir $PROJECT_PATH/knnbox/models \
+--knn-mode inference \
+--knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \
+--knn-max-k 16 \
+--knn-combiner-path $COMBINER_LOAD_DIR \

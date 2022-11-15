@@ -415,6 +415,7 @@ class EpochBatchIterator(EpochBatchIterating):
                 batches = shuffle_batches(list(self.frozen_batches), self.seed + epoch)
             else:
                 batches = self.frozen_batches
+
             batches = list(
                 ShardedIterator(batches, self.num_shards, self.shard_id, fill_value=[])
             )

@@ -34,86 +34,17 @@ from torch import Tensor
 DEFAULT_MAX_SOURCE_POSITIONS = 1024
 DEFAULT_MAX_TARGET_POSITIONS = 1024
 
-## knnbox add code >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-from knnbox.utils import disable_model_grad, enable_module_grad
-from knnbox.datastore import Datastore
-from knnbox.retriever import Retriever
-from knnbox.combiner import Combiner, AdaptiveCombiner, KernelSmoothedCombiner
-from knnbox.utils import get_registered_datastore, registe_datastore, keys_mask_select
-import os
-
-MODE = os.environ["MODE"]
-if MODE == "build_datastore":
-    DATASTORE_SAVE_PATH = os.environ["DATASTORE_SAVE_PATH"]
-    KEY_DIM = os.environ["KEY_DIM"]
-    if get_registered_datastore("datastore") is None:
-        datastore = Datastore(DATASTORE_SAVE_PATH,key_dim=int(KEY_DIM), value_dim=1)
-        registe_datastore("datastore", datastore)
-    else:
-        datastore = get_registered_datastore("datastore")
-
-if MODE == "vanilla_inference":
-    DATASTORE_LOAD_PATH = os.environ["DATASTORE_LOAD_PATH"]
-    PROBABILITY_DIM = os.environ["PROBABILITY_DIM"]
-    K = os.environ["K"]
-    LAMBDA = os.environ["LAMBDA"]
-    TEMPERATURE = os.environ["TEMPERATURE"]
-    datastore = Datastore.load(DATASTORE_LOAD_PATH, load_key=False)
-    retriever = Retriever(datastore=datastore, k=int(K))
-    combiner = Combiner(lambda_=float(LAMBDA),temperature=float(TEMPERATURE),probability_dim=int(PROBABILITY_DIM))
-
-if MODE == "train_metak":
-    DATASTORE_LOAD_PATH = os.environ["DATASTORE_LOAD_PATH"]
-    PROBABILITY_DIM = os.environ["PROBABILITY_DIM"]
-    COMBINER_SAVE_PATH = os.environ["COMBINER_SAVE_PATH"]
-    K = os.environ["K"]
-    datastore = Datastore.load(DATASTORE_LOAD_PATH,load_key=False)
-    retriever = Retriever(datastore=datastore, k=int(K))
-    # Note: combiner's declaration is inside TransformerDecoderBase class __init__()
-
-if MODE == "train_kster":
-    DATASTORE_LOAD_PATH = os.environ["DATASTORE_LOAD_PATH"]
-    PROBABILITY_DIM = os.environ["PROBABILITY_DIM"]
-    COMBINER_SAVE_PATH = os.environ["COMBINER_SAVE_PATH"]
-    KEY_DIM = os.environ["KEY_DIM"]
-    K = os.environ["K"]
-    datastore = Datastore.load(DATASTORE_LOAD_PATH)
-    retriever = Retriever(datastore=datastore, k=int(K))
-    # Note: combiner's declaration is inside TransformerDecoderBase class __init__()
-
-if MODE == "adaptive_knn_inference" :
-    DATASTORE_LOAD_PATH = os.environ["DATASTORE_LOAD_PATH"]
-    COMBINER_LOAD_PATH = os.environ["COMBINER_LOAD_PATH"]
-    K = os.environ["K"]
-    datastore = Datastore.load(DATASTORE_LOAD_PATH,load_key=False)
-    retriever = Retriever(datastore=datastore, k=int(K))
-    # Note: combiner's declaration is inside TransformerDecoderBase class __init__()
-
-if MODE == "kernel_smoothed_knn_inference":
-    DATASTORE_LOAD_PATH = os.environ["DATASTORE_LOAD_PATH"]
-    COMBINER_LOAD_PATH = os.environ["COMBINER_LOAD_PATH"]
-    K = os.environ["K"]
-    datastore = Datastore.load(DATASTORE_LOAD_PATH)
-    retriever = Retriever(datastore=datastore, k=int(K))
-    # Note: combiner's declaration is inside TransformerDecoderBase class __init__()
-## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
-
-
 
 @register_model("transformer")
 class TransformerModel(FairseqEncoderDecoderModel):
     """
     Transformer model from `"Attention Is All You Need" (Vaswani, et al, 2017)
     <https://arxiv.org/abs/1706.03762>`_.
-
     Args:
         encoder (TransformerEncoder): the encoder
         decoder (TransformerDecoder): the decoder
-
     The Transformer model provides the following named architectures and
     command-line arguments:
-
     .. argparse::
         :ref: fairseq.models.transformer_parser
         :prog:
@@ -156,13 +87,6 @@ class TransformerModel(FairseqEncoderDecoderModel):
         super().__init__(encoder, decoder)
         self.args = args
         self.supports_align_args = True
-
-        ## knnbox add code >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        # when train kster or metak network, we should disable other module's grad
-        if MODE == "train_kster" or MODE == "train_metak":
-            disable_model_grad(self)
-            enable_module_grad(self, "combiner")
-        ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     @staticmethod
     def add_args(parser):
@@ -335,7 +259,6 @@ class TransformerModel(FairseqEncoderDecoderModel):
     ):
         """
         Run the forward pass for an encoder-decoder model.
-
         Copied from the base class, but without ``**kwargs``,
         which are not supported by TorchScript.
         """
@@ -371,7 +294,6 @@ class TransformerEncoder(FairseqEncoder):
     """
     Transformer encoder consisting of *args.encoder_layers* layers. Each layer
     is a :class:`TransformerEncoderLayer`.
-
     Args:
         args (argparse.Namespace): parsed command-line arguments
         dictionary (~fairseq.data.Dictionary): encoding dictionary
@@ -470,7 +392,6 @@ class TransformerEncoder(FairseqEncoder):
                 intermediate hidden states (default: False).
             token_embeddings (torch.Tensor, optional): precomputed embeddings
                 default `None` will recompute embeddings
-
         Returns:
             namedtuple:
                 - **encoder_out** (Tensor): the last encoder layer's output of
@@ -516,11 +437,9 @@ class TransformerEncoder(FairseqEncoder):
     def reorder_encoder_out(self, encoder_out: EncoderOut, new_order):
         """
         Reorder encoder output according to *new_order*.
-
         Args:
             encoder_out: output from the ``forward()`` method
             new_order (LongTensor): desired order
-
         Returns:
             *encoder_out* rearranged according to *new_order*
         """
@@ -604,7 +523,6 @@ class TransformerDecoder(FairseqIncrementalDecoder):
     """
     Transformer decoder consisting of *args.decoder_layers* layers. Each layer
     is a :class:`TransformerDecoderLayer`.
-
     Args:
         args (argparse.Namespace): parsed command-line arguments
         dictionary (~fairseq.data.Dictionary): decoding dictionary
@@ -721,24 +639,7 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             nn.init.normal_(
                 self.output_projection.weight, mean=0, std=self.output_embed_dim ** -0.5
             )
-        
-        ## knn-box add code >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        if MODE == "train_metak":
-            self.combiner = AdaptiveCombiner(probability_dim=int(PROBABILITY_DIM), max_k=int(K))
-        if MODE == "train_kster":
-            self.combiner = KernelSmoothedCombiner(query_dim=int(KEY_DIM),probability_dim=int(PROBABILITY_DIM))
-        if MODE == "adaptive_knn_inference":
-            self.combiner = AdaptiveCombiner.load(COMBINER_LOAD_PATH)
-        if MODE == "kernel_smoothed_knn_inference":
-            self.combiner = KernelSmoothedCombiner.load(COMBINER_LOAD_PATH)
-        ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-
-    #  ## knnbox add code >>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    # def __del__(self):
-    #     if MODE == "train_metak" or MODE == "train_kster":
-    #         self.combiner.dump(COMBINER_SAVE_PATH)
-    # ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     def build_decoder_layer(self, args, no_encoder_attn=False):
         return TransformerDecoderLayer(args, no_encoder_attn)
 
@@ -766,7 +667,6 @@ class TransformerDecoder(FairseqIncrementalDecoder):
                 applying output layer (default: False).
             full_context_alignment (bool, optional): don't apply
                 auto-regressive mask to self-attention (default: False).
-
         Returns:
             tuple:
                 - the decoder's output of shape `(batch, tgt_len, vocab)`
@@ -780,49 +680,9 @@ class TransformerDecoder(FairseqIncrementalDecoder):
             alignment_layer=alignment_layer,
             alignment_heads=alignment_heads,
         )
-
-         ## knnbox add code >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        if MODE == "build_datastore":
-            keys = keys_mask_select(x, datastore.get_mask())
-            datastore.add_key(keys)
-        if MODE == "vanilla_inference" or MODE == "train_metak" or MODE == "adaptive_knn_inference":
-            retriever.retrieve(x)
-        if MODE == "train_kster" or MODE == "kernel_smoothed_knn_inference":
-            retriever.retrieve(x, return_keys=True, return_query=True)
-        ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-
         if not features_only:
             x = self.output_layer(x)
         return x, extra
-
-     ## knnbox add code >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    def get_normalized_probs(
-        self,
-        net_output: Tuple[Tensor, Optional[Dict[str, List[Optional[Tensor]]]]],
-        log_probs: bool,
-        sample: Optional[Dict[str, Tensor]] = None,
-    ):
-        if MODE == "vanilla_inference":
-            knn_prob = combiner.get_knn_prob(**retriever.results, device=net_output[0].device)
-            combined_prob = combiner.get_combined_prob(knn_prob, net_output[0], log_probs=log_probs)
-            return combined_prob
-        
-        # use `self.combiner` instead of `combiner` here
-        elif MODE == "train_metak" or MODE == "adaptive_knn_inference" or MODE == "kernel_smoothed_knn_inference":
-            knn_prob = self.combiner.get_knn_prob(**retriever.results, device=net_output[0].device)
-            combined_prob = self.combiner.get_combined_prob(knn_prob, net_output[0], log_probs=log_probs)
-            return combined_prob
-
-        # when train kster, specify train_KSTER=True 
-        elif MODE == "train_kster":
-            knn_prob = self.combiner.get_knn_prob(**retriever.results, device=net_output[0].device, train_KSTER=True)
-            combined_prob = self.combiner.get_combined_prob(knn_prob, net_output[0], log_probs=log_probs)
-            return combined_prob
-    
-        # default, use neural network original probability
-        else:
-            return super().get_normalized_probs(net_output, log_probs, sample)
-    ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     def extract_features(
         self,
@@ -859,10 +719,8 @@ class TransformerDecoder(FairseqIncrementalDecoder):
     ):
         """
         Similar to *forward* but only return features.
-
         Includes several features from "Jointly Learning to Align and
         Translate with Transformer Models" (Garg et al., EMNLP 2019).
-
         Args:
             full_context_alignment (bool, optional): don't apply
                 auto-regressive mask to self-attention (default: False).
@@ -870,7 +728,6 @@ class TransformerDecoder(FairseqIncrementalDecoder):
                 heads at this layer (default: last layer).
             alignment_heads (int, optional): only average alignment over
                 this many heads (default: all heads).
-
         Returns:
             tuple:
                 - the decoder's features of shape `(batch, tgt_len, embed_dim)`
@@ -1146,15 +1003,3 @@ def transformer_wmt_en_de_big_t2t(args):
     args.attention_dropout = getattr(args, "attention_dropout", 0.1)
     args.activation_dropout = getattr(args, "activation_dropout", 0.1)
     transformer_vaswani_wmt_en_de_big(args)
-
-# >>>>>> add by knnbox
-@register_model_architecture("transformer", "transformer_wmt19_de_en")
-def transformer_wmt19_de_en(args):
-    args.dropout = getattr(args, "dropout", 0.2)
-    args.encoder_ffn_embed_dim = getattr(args, "encoder_ffn_embed_dim", 8192)
-    args.share_decoder_input_output_embed = getattr(
-        args, "share_decoder_input_output_embed", True
-    )
-    args.share_all_embeddings = getattr(args, "share_all_embeddings", True)
-    transformer_wmt_en_de_big(args)
-# <<<<<<<<<<<<<<<<<<<<<<

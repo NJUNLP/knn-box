@@ -1,21 +1,24 @@
-# kernel smoothed knn-mt, train KSTER network
+:<<!
+[script description]: train adptive-knn-mt's meta-k network
+[dataset]: multi domain DE-EN dataset
+[base model]: WMT19 DE-ENscript
+
+note 1. original paper update 30k steps, but for time saving we update 2k steps here,
+the result of 2k version is good enough.
+
+note 2. You can adjust --max-tokens and --update-freq based on your GPU memory.
+original paper recommand that max-tokens*update-freq equals 36864.
+!
+
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/it
-SAVE_DIR=$PROJECT_PATH/save-models/combiner/kernel_smooth/it
-
-export MODE=train_kster
-export DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/it
-export PROBABILITY_DIM=42024
-export KEY_DIM=1024
-export K=16
-export COMBINER_SAVE_PATH=$SAVE_DIR
+DATA_PATH=$PROJECT_PATH/data-bin/medical
+SAVE_DIR=$PROJECT_PATH/save-models/combiner/kernel_smooth/medical
 
 ## using paper's setting
-## here we specify max-update=2000 for time saving, original paper update 30000 steps.
-CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
---task translation --arch transformer_wmt19_de_en \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/train.py $DATA_PATH \
+--task translation \
 --train-subset train --valid-subset valid \
 --best-checkpoint-metric "loss" --patience 30 --max-epoch 500 --max-update 2000 \
 --finetune-from-model $BASE_MODEL \
@@ -28,7 +31,10 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --tensorboard-logdir $SAVE_DIR/log \
 --save-dir $SAVE_DIR \
 --max-tokens 1024 \
---update-freq 36
-
-
-export MODE=""
+--update-freq 36 \
+--arch kernel_smoothed_knn_mt@transformer_wmt19_de_en \
+--user-dir $PROJECT_PATH/knnbox/models \
+--knn-mode train_kster \
+--knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \
+--knn-k 16 \
+--knn-combiner-path $SAVE_DIR \

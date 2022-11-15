@@ -1,19 +1,21 @@
-## adaptive knn-mt, train meta-k network
+:<<!
+[script description]: train adptive-knn-mt's meta-k network
+[dataset]: multi domain DE-EN dataset
+[base model]: WMT19 DE-ENscript
+
+note 1. You can adjust --batch-size and --update-freq based on your GPU memory.
+original paper recommand that batch-size*update-freq equals 32.
+!
+
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/it
-SAVE_DIR=$PROJECT_PATH/save-models/combiner/adaptive/it
+DATA_PATH=$PROJECT_PATH/data-bin/medical
+SAVE_DIR=$PROJECT_PATH/save-models/combiner/adaptive/medical
 
-export MODE=train_metak
-export DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/it
-export PROBABILITY_DIM=42024
-export KEY_DIM=1024
-export COMBINER_SAVE_PATH=$SAVE_DIR
-export K=16
 
 # using paper's settings
 CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
---task translation --arch transformer_wmt19_de_en \
+--task translation \
 --train-subset valid --valid-subset valid \
 --best-checkpoint-metric "loss" \
 --finetune-from-model $BASE_MODEL \
@@ -27,7 +29,11 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --tensorboard-logdir $SAVE_DIR/log \
 --save-dir $SAVE_DIR \
 --batch-size 4 \
---update-freq 8
+--update-freq 8 \
+--user-dir $PROJECT_PATH/knnbox/models \
+--arch "adaptive_knn_mt@transformer_wmt19_de_en" \
+--knn-mode "train_metak" \
+--knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \
+--knn-max-k 16 \
+--knn-combiner-path $SAVE_DIR \
 
-## recover environment variable
-export MODE=""

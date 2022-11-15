@@ -1,14 +1,14 @@
-## base mt inference.
-## dataset: multi domain DE-EN dataset
-## base model: WMT19 DE-EN
+:<<!
+[script description]: use neural machine translation model to translate 
+[dataset]: multi domain DE-EN dataset
+[base model]: WMT19 DE-EN
+!
 
 PROJECT_PATH=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
+DATA_PATH=$PROJECT_PATH/data-bin/medical
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/it
 
-export MODE=""
-
-CUDA_VISIBLE_DEVICES=5 python $PROJECT_PATH/fairseq_cli/generate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/generate.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
 --dataset-impl mmap \

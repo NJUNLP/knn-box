@@ -5,183 +5,181 @@ from ..utils import Memmap, read_config, build_faiss_index, load_faiss_index, wr
 
 class Datastore:
     r"""
-    implement vanilla datastore for neural network
+    implement vanilla datastore
     """
 
     def __init__(
         self,
         path,
-        key_dim = 768,
-        value_dim = 1,
-        key_dtype = "memmap_float16",
-        value_dtype = "memmap_int",
-        keys = None,
-        values = None,
-        has_keys = True,
+        datas=None,
         **kwargs,
     ):
         r"""
         Args:
             path(`str`):
                 the directory to save datastore files
+            datas(`dict`):
+                the dict of inner data
+            data_infos(`dict`):
+                The infomations of datastore inner data
         
         """
         self.path = path
-        self.key_dim = key_dim
-        self.value_dim = value_dim
-        self.key_dtype = key_dtype
-        self.value_dtype = value_dtype
-
+        # initialize datas
+        self.datas = datas if datas is not None else {}
         # create folder if not exist
         if not os.path.exists(path):
             os.makedirs(path)
-        
-        if keys is not None:
-            self.keys = keys
-        elif has_keys is True:
-            if key_dtype.startswith("memmap"):
-                print(key_dtype)
-                key_dtype = key_dtype.split("_")[1]
-                self.keys = Memmap(
-                    os.path.join(path, "keys"),
-                    dtype = key_dtype,
-                    dim = key_dim,
-                    mode = "w+",
-                )
-        else:
-            self.keys = None
-                
-        if values is not None:
-            self.values = values
-        else:
-            if value_dtype.startswith("memmap"):
-                value_dtype = value_dtype.split("_")[1]
-                self.values = Memmap(
-                    os.path.join(path, "values"),
-                    dtype = value_dtype,
-                    dim = value_dim,
-                    mode = "w+",
-                )
-
-        self.faiss_index = None
-        self.mask = None
-
-        
-
-    def add_key(self, key):
-        self.keys.add(key)
-
-    
-    def add_value(self, value):
-        self.values.add(value)
     
 
-    def set_mask(self, mask):
+    def __getitem__(self, name):
+        r""" access  inner data
+        Usage:
+            ds = Datastore(path="/home/datastore")
+            a = torch.rand(3,1024)
+            ds["keys"].add(a)
+            b = torch.rand(3,1)
+            ds["vals"].add(b)
+        """
+        if name not in self.datas:
+            # Create it if no exists
+            self.datas[name] = Memmap(filename=os.path.join(self.path, name+".npy"), mode="w+")
+        return self.datas[name]
+
+
+    def __setitem__(self, name, data):
+        r""" set inner data directory
+        Usage:
+            ds = Datastore(path="/home/datastore")
+            mp = Memmap("/home/vals.npy", mode="r")
+            ds["vals"] = mp
+        """
+        assert isinstance(data, Memmap), "__setitme__ is designed for set Memmap object"
+        self.datas[name] = data
+        
+
+    def set_pad_mask(self, mask):
+        r""" 
+        save the pad mask 
+        """ 
         self.mask = mask
 
-    
-    def get_mask(self):
+
+    def get_pad_mask(self):
+        r"""
+        get the saved mask
+        """
+        assert hasattr(self, "mask"), "You should set pad mask first!"
         return self.mask
     
 
-    @staticmethod
-    def load(path, load_key=True):
+    @classmethod
+    def load(cls, path, load_list):
         r"""
-        load the datastore under the `path` folder
+        load the datastore from the `path` folder
 
         Args:
             path(`str`):
                 folder where the datastore files is stored
+            load_list(`list`):
+                specify the data name which we want to load
         Return:
             Datastore object(`Datastore`)
         """
-
+        
+        datas = {}
         config = read_config(path)
-        # load the memmap from disk
-        keys_filename = os.path.join(path, "keys")
-        has_keys = True
-        if load_key is True and config["key_dtype"].startswith("memmap"):
-            config["key_dtype"] = config["key_dtype"].split("_")[1]
-            keys = Memmap(keys_filename, dim=config["key_dim"],
-                    dtype=config["key_dtype"], mode="r",
-                    capacity=config["capcity"])
-        else:
-            keys = None
-            has_keys = False
+         
+        for name in load_list:
+            assert name in config["data_list"], "You haven't save {} but you list it in load_list".format(name)
+            if os.path.exists(os.path.join(path, name+".npy")):
+                _info = config["data_infos"][name]
+                datas[name] = Memmap(
+                                filename=os.path.join(path, name+".npy"),
+                                shape=_info["shape"],
+                                dtype=_info["dtype"],
+                                mode="r+",
+                            )
 
-        values_filename = os.path.join(path, "values")
-        if config["value_dtype"].startswith("memmap"):
-            config["value_dtype"] = config["value_dtype"].split("_")[1]
-            values = Memmap(values_filename, dim=config["value_dim"],
-                    dtype=config["value_dtype"], mode="r",
-                    capacity=config["capcity"])
-        
-        # 创建datastore
-        ds = Datastore(**config, keys=keys, values=values, has_keys=has_keys)
-        return ds
+        # create Datastore instance
+        return cls(path, datas)
 
 
-
-    def load_faiss_index(self, move_to_gpu=True):
-        r"""
-        load faiss index, so you can use self.faiss_index
-        """
-        path = os.path.join(self.path, "keys.faiss")
-        capcity = self.keys.capacity if self.keys is not None else self.values.capacity
-        self.faiss_index = load_faiss_index(path,
-        shape = (capcity, self.key_dim),
-        n_probe = 32,
-        move_to_gpu=move_to_gpu)
-        
-
-
-    
-    def dump(self, verbose=True):
+    def dump(self, verbose=True, dump_list=None):
         r"""
         store the datastore files and config file to disk.
-
         
         Args:
-            path(`str`):
-                folder where you want to save the datastore files
+            verbose: whether to display detailed infomation
+            dump_list: specify the data names which you want to dump. if dump_list is None, dump all data
         """
-        self.keys.dump()
-        self.values.dump()
+
         config = {}
-        config["path"] = self.path
-        config["key_dim"] = self.key_dim
-        config["value_dim"] = self.value_dim
-        config["key_dtype"] = self.key_dtype
-        config["value_dtype"] = self.value_dtype
-        config["capcity"] = self.values.capacity
+        config["data_list"] = []
+        config["data_infos"] = {}
+
+        for name in self.datas.keys():
+            # we always dump all infomations
+            config["data_list"].append(name)
+            config["data_infos"][name] = {
+                "name": name,
+                "shape": self.datas[name].shape,
+                "dtype": str(self.datas[name].dtype),
+            }
+            if dump_list is None or name in dump_list:
+                # dump the data to disk
+                self.datas[name].dump()
+                if verbose:
+                    print("["+name+".npy: "+str(config["data_infos"][name]["shape"])+" saved successfully ^_^ ]")
         write_config(self.path, config)
-        if verbose:
-            print("keys: %d " % self.keys.capacity)
-            print("values: %d " % self.values.capacity)
-            assert self.keys.capacity == self.values.capacity, "keys entries not equal to values"
-            print("added %d entries" % config["capcity"])
 
 
-
-    def build_faiss_index(self, verbose=True):
+    def load_faiss_index(self, filename, move_to_gpu=True):
         r"""
-        build faiss index for keys.
-        the output file named `keys.faiss`
+        load faiss index from disk
+
+        Args:
+            filename: the prefix of faiss_index file, for example `keys.faiss_index`, filename is `keys`
+            move_to_gpu: wether move the faiss index to GPU
+        """
+        index_path = os.path.join(self.path, filename+".faiss_index")
+        # we open config file and get the shape
+        config = read_config(self.path)
+        
+        shape = tuple(config["data_infos"][filename]["shape"])
+        if not hasattr(self, "faiss_index") or self.faiss_index is None:
+            self.faiss_index = {}
+        self.faiss_index[filename] = load_faiss_index(
+                        path = index_path,
+                        shape = shape,
+                        n_probe = 32,
+                        move_to_gpu = move_to_gpu
+                        )
+
+
+    def build_faiss_index(self, name, verbose=True, use_pca=False, pca_dim=256):
+        r"""
+        build faiss index for a data.
+        the output file named name+.faiss_index
+
+        Args:
+            name: The data name which need to build faiss index
+            verbose: display detailed message
+            use_pca: wether do a PCA when building faiss index
+            pca_dim: if use PCA, the PCA output dim
         """
 
-        if not isinstance(self.keys, Memmap):
-            print("[ERROR]: can only build faiss for Memmap / np.NDArray")
+        if not isinstance(self.datas[name], Memmap):
+            print("ERROR: can only build faiss for Memmap object.")
             os.exit(1)
-        if verbose:
-            print("building faiss index...")
-         
         # build faiss
-        build_faiss_index(self.keys.data, 
-                    self.keys.data.shape,
-                    os.path.join(self.path, "keys.faiss"),
-                    verbose=verbose)
-        
-        if verbose:
-            print("build faiss index done.")
+        build_faiss_index(
+                    self.datas[name].data, 
+                    self.datas[name].shape,
+                    os.path.join(self.path, name+".faiss_index"),
+                    use_pca=use_pca,
+                    pca_dim=pca_dim,
+                    verbose=verbose
+                    )
 
  

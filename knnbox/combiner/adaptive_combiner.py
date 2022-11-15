@@ -15,28 +15,26 @@ class AdaptiveCombiner(nn.Module):
         else:
             self.model = model
         
-        # make it gpu
+        # move model to gpu
         self.model.cuda()
         self.max_k = max_k
-        self.temperature = 10 # TODO: 这一块应该整成参数?
+        # TODO: temperature can be trained also
+        self.temperature = 10
         self.probability_dim = probability_dim
         self.lambda_ = None
         self.knn_prob = None
 
 
-    def get_knn_prob(self, distances, values, device, **kwargs):
+    def get_knn_prob(self, distances, vals, device, **kwargs):
+        
 
-        # TODO: next line should not exist
-        values = values.squeeze(-1)
-
-        net_outputs = self.model(distances=distances, values=values)
+        net_outputs = self.model(distances=distances, vals=vals)
         k_prob = net_outputs
 
-        # # TODO: 切片改成更通用的形式，因为不一定有三个维度
+        # TODO: slice operation should be more general, may there are not exactly 3 dim
         lambda_ = 1.0 - k_prob[:, :, 0:1] 
         k_soft_prob = k_prob[:,:,1:]
-        # TODO: 计算knn prob，实现该函数
-        knn_prob = self._caculate_select_knn_prob(values, distances, self.temperature, k_soft_prob, device)
+        knn_prob = self._caculate_select_knn_prob(vals, distances, self.temperature, k_soft_prob, device)
         self.lambda_ = lambda_
         self.knn_prob = knn_prob
 
@@ -48,13 +46,18 @@ class AdaptiveCombiner(nn.Module):
         # the policy to combine knn_prob and neural_model_prob
         neural_model_prob = F.softmax(neural_model_logit, dim=-1)
         combined_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
+        # some extra infomation
+        extra = {}
+        extra["neural_probs"] = neural_model_prob
+        extra["unlog_combined_probs"] = combined_probs
+
         if log_probs:
             combined_probs =  torch.log(combined_probs)
-        return combined_probs
+        return combined_probs, extra
     
 
 
-    def _caculate_select_knn_prob(self, values, distances, temperature, knn_select_prob, device):
+    def _caculate_select_knn_prob(self, vals, distances, temperature, knn_select_prob, device):
         r""" using k select prob to caculate knn prob """
         B, S, K = distances.size()
         R_K = knn_select_prob.size(-1)
@@ -73,13 +76,13 @@ class AdaptiveCombiner(nn.Module):
         
         distances = distances.unsqueeze(-2).expand(B, S, R_K, K)
         distances = distances * self.mask_for_distance
-        scaled_dists = -distances / temperature
+        scaled_dists = - distances / temperature
         knn_weight = torch.softmax(scaled_dists, dim=-1)  # [B, S, R_K, K]
         weight_sum_knn_weight = torch.matmul(knn_select_prob.unsqueeze(-2), knn_weight).squeeze(-2).unsqueeze(-1)  # [B, S, K, 1]
-        knn_tgt_prob = torch.zeros(B, S, K, self.probability_dim).to(device)  # [B, S, K, Vocab Size]
-        values = values.unsqueeze_(-1)  # [B, S, K, 1]
+        knn_tgt_prob = torch.zeros(B, S, K, self.probability_dim, device=device)  # [B, S, K, Vocab Size]
+        vals = vals.unsqueeze_(-1)  # [B, S, K, 1]
 
-        knn_tgt_prob.scatter_(src=weight_sum_knn_weight.float(), index=values, dim=-1)
+        knn_tgt_prob.scatter_(src=weight_sum_knn_weight.float(), index=vals, dim=-1)
         prob = knn_tgt_prob.sum(dim=-2)  # [Batch Size, seq len, vocab size]
 
         return prob
@@ -169,9 +172,9 @@ class MetaKNetwork(nn.Module):
 
 
     
-    def forward(self, distances, values):
+    def forward(self, distances, vals):
         if self.label_count_as_feature:
-            label_counts = self._get_label_count_segment(values, relative=self.relative_label_count)
+            label_counts = self._get_label_count_segment(vals, relative=self.relative_label_count)
             network_inputs = torch.cat((distances.detach(), label_counts.detach().float()), dim=-1)
         else:
             network_inputs = distances.detach()
@@ -183,11 +186,10 @@ class MetaKNetwork(nn.Module):
         
         net_outputs = self.retrieve_result_to_k_and_lambda(network_inputs)
         
-        # 该网络返回的是probs即可
         return net_outputs
 
 
-    def _get_label_count_segment(self, values, relative=False):
+    def _get_label_count_segment(self, vals, relative=False):
         r""" this function return the label counts for different range of k nearest neighbor 
             [[0:0], [0:1], [0:2], ..., ]
         """
@@ -200,18 +202,17 @@ class MetaKNetwork(nn.Module):
             # [0,1,1]
             # [0,0,1]
             # [0,0,0]
-            self.mask_for_label_count = mask_for_label_count.to(values.device)
+            self.mask_for_label_count = mask_for_label_count.to(vals.device)
 
-        ## TODO: 感觉下面的特征不太对劲
-        B, S, K = values.size()
-        expand_values = values.unsqueeze(-2).expand(B,S,K,K)
-        expand_values = expand_values.masked_fill(self.mask_for_label_count, value=-1)
+        ## TODO: The feature below may be unreasonable
+        B, S, K = vals.size()
+        expand_vals = vals.unsqueeze(-2).expand(B,S,K,K)
+        expand_vals = expand_vals.masked_fill(self.mask_for_label_count, value=-1)
         
 
-        labels_sorted, _ = expand_values.sort(dim=-1) # [B, S, K, K]
+        labels_sorted, _ = expand_vals.sort(dim=-1) # [B, S, K, K]
         labels_sorted[:, :, :, 1:] *= ((labels_sorted[:, :, :, 1:] - labels_sorted[:, :, : , :-1]) != 0).long()
         retrieve_label_counts = labels_sorted.ne(0).sum(-1)
-        # TODO: 下面这句,因为前面的都算了-1，但-1不应计算，所以去掉1
         retrieve_label_counts[:, :, :-1] -= 1
 
         if relative:

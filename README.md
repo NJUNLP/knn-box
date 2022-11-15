@@ -100,14 +100,38 @@ bash inference.sh
 
 ![](https://s1.ax1x.com/2022/07/30/vioW4K.png)
 
+## Visualize the kNN-MT translation process
+To get a web page to visualize vanilla knn-mt translation process, install the requirements:
+* streamlit >= 1.13.0
+* pandas >= 1.3.5,
+* matplotlib >= 3.5.3,
+* seaborn >= 0.12.1,
+* altair >= 4.2.0,
+* scikit-learn >= 1.0.2
 
-## Create New KNN Models
+and then execute the following command:
+```bash
+cd knnbox-scripts/vanilla-knn-mt-visual
+# step 1. build datastore for visualization 
+# (the visual datastore will save addtional information compared to noraml version datastore)
+bash build_datastore.sh
+# step 2. Configure the information for the model you want to visualize
+vim model_configs.yml #Refer to the example configuration to modify.
+# step 3. lanuch the web page
+bash start_app.sh
+```
+You will get a web page look like this
+![](https://s1.ax1x.com/2022/11/15/zVMxtx.png)
+![](https://s1.ax1x.com/2022/11/15/zVQKgS.png)
+
+<!--
+## Create New KNN Models[]
 If you are not only satisfied with running scripts, but want to use knnbox toolkit to create novel knn models, here are tutorials on how we implemented three example models. Hope it can help you.
 
 * [Vanilla kNN-MT](knnbox/tutorials/markdowns/vanilla_knn_mt.md)
 * [Kernel Smoothed kNN-MT](knnbox/tutorials/markdowns/kernel_smoothed_knn_mt.md)
 * [Adaptive kNN-MT](knnbox/tutorials/markdowns/adaptive_knn_mt.md)
-
+-->
 ## Contributor
 Qianfeng Zhao: qianfeng@smail.nju.edu.cn
 Wenhao Zhu: zhuwh@smail.nju.edu.cn

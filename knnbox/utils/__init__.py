@@ -1,2 +1,2 @@
-from .utils import *
+from .function import *
 from .memmap import Memmap

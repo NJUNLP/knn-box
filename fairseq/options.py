@@ -220,7 +220,7 @@ def get_parser(desc, default_task="translation"):
             default=REGISTRY["default"],
             choices=REGISTRY["registry"].keys(),
         )
-
+    
     # Task definitions can be found under fairseq/tasks/
     from fairseq.tasks import TASK_REGISTRY
 

@@ -32,22 +32,22 @@ class KernelSmoothedCombiner(nn.Module):
 
 
 
-    def get_knn_prob(self, query, keys, distances, values, device="cpu", train_KSTER=False, **kwargs):
+    def get_knn_prob(self, query, keys, distances, vals, device="cpu", train_KSTER=False, **kwargs):
         r"""caculate the knn prob """
-        # TODO: to fix
-        values = values.squeeze(-1)
 
         # if we are training KSTER, drop the nearest key value pair
         if train_KSTER is True:
             keys = keys[...,1:,:]
-            values = values[...,1:]
+            vals = vals[...,1:]
             distances = distances[...,1:]
     
-
         # caclulate bandwidth
         # keys shape: [..., k, probability_dim]
-        values_shape = list(values.size())
+        vals_shape = list(vals.size())
         average_key = torch.mean(keys, dim=-2)
+        # query and average_key may be half precision, convert them to float32 first
+        query = query.float()
+        average_key = average_key.float()
         bandwidth = self.bandwidth_estimator(query, average_key) # [..., k]
 
         # caclulate knn_probs
@@ -62,11 +62,11 @@ class KernelSmoothedCombiner(nn.Module):
         weighted_sum_key = knn_weights.repeat(*([1]*(knn_weights.dim()-1)), keys.size(-1)) * keys
         weighted_sum_key = torch.sum(weighted_sum_key, dim=-2)
         
-        values_shape.append(self.probability_dim)
-        probabilities_shape = values_shape
+        vals_shape.append(self.probability_dim)
+        probabilities_shape = vals_shape
         # construct prob
         knn_probs = torch.zeros(*probabilities_shape, device=device)
-        knn_probs.scatter_(dim=-1, index=values.unsqueeze(-1), src=knn_weights)
+        knn_probs.scatter_(dim=-1, index=vals.unsqueeze(-1), src=knn_weights)
         # sum up same tok's prob
         knn_probs = knn_probs.sum(dim=-2)
 
@@ -80,9 +80,15 @@ class KernelSmoothedCombiner(nn.Module):
         strategy of combine probability """
         neural_model_prob = F.softmax(neural_model_logit, dim=-1)
         combined_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
+        # some extra infomation
+        extra = {}
+        extra["neural_probs"] = neural_model_prob
+        extra["unlog_combined_probs"] = combined_probs
+        
         if log_probs:
             combined_probs =  torch.log(combined_probs)
-        return combined_probs
+
+        return combined_probs, extra
 
     @staticmethod
     def load(path):

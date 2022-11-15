@@ -1,25 +1,29 @@
-## build datastore for vanilla knn mt.
-## dataset: multi domain DE-EN dataset
-## base model: WMT19 DE-EN
+:<<! 
+[script description]: build a datastore for adaptive-knn-mt
+[dataset]: multi domain DE-EN dataset
+[base model]: WMT19 DE-EN
+
+note 1. adaptive knn-mt's datastore is same as vanilla if they use a same base neural model,
+so you can choose to directly use the obtained vanilla knn-mt's datastore without executing this script.
+
+note 2. The --arch can also be "vanilla_knn_mt@xxxx", but for uniformity we use "adaptive_knn_mt@xxxx" here.
+!
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/it
+DATA_PATH=$PROJECT_PATH/data-bin/medical
 
-export MODE=build_datastore
-export DATASTORE_SAVE_PATH=$PROJECT_PATH/datastore/vanilla/it
-export KEY_DIM=1024
 
-CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/validate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/build_datastore.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
+--model-overrides "{'eval_bleu': False, 'required_seq_len_multiple':1, 'load_alignments': False}" \
 --dataset-impl mmap \
 --valid-subset train \
---model-overrides "{'eval_bleu': False, 'required_seq_len_multiple':1, 'load_alignments': False}" \
 --skip-invalid-size-inputs-valid-test \
---max-tokens 1024 \
---max-tokens-valid 10000 \
---bpe fastbpe
-
-# recover environment variable
-export MODE=""
+--max-tokens 4096 \
+--bpe fastbpe \
+--user-dir $PROJECT_PATH/knnbox/models \
+--arch "adaptive_knn_mt@transformer_wmt19_de_en" \
+--knn-mode "build_datastore" \
+--knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \

@@ -19,11 +19,7 @@ from torch.serialization import default_restore_location
 
 logger = logging.getLogger(__name__)
 
-MODE = os.environ["MODE"]
-if MODE == "train_kster" or MODE == "train_metak":
-    COMBINER_SAVE_PATH = os.environ["COMBINER_SAVE_PATH"]
-
-
+ 
 def save_checkpoint(args, trainer, epoch_itr, val_loss):
     from fairseq import distributed_utils, meters
 
@@ -89,12 +85,16 @@ def save_checkpoint(args, trainer, epoch_itr, val_loss):
         os.path.join(args.save_dir, fn) for fn, cond in checkpoint_conds.items() if cond
     ]
     if len(checkpoints) > 0:
-        ## knn-box add code >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-        if MODE == "train_kster" or MODE == "train_metak":
+        ## knn-box related code start >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+        ## if we are training combiner, we only dump the combiner to disk
+        if hasattr(args, "knn_mode") and \
+                (args.knn_mode == "train_kster" or args.knn_mode == "train_metak"):
+            # if we got a new best checkpoint, save the combiner
             if checkpoint_conds["checkpoint_best{}.pt".format(suffix)]:
-                trainer.model.decoder.combiner.dump(COMBINER_SAVE_PATH)
-                logger.info("dumped combiner to {}".format(COMBINER_SAVE_PATH))
-        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+                assert hasattr(args, "knn_combiner_path"), "you must provide knn_combiner_path"
+                trainer.model.decoder.combiner.dump(args.knn_combiner_path)
+                logger.info("dumped combiner to {}".format(args.knn_combiner_path))
+        # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end
         else:
             trainer.save_checkpoint(checkpoints[0], extra_state)
             for cp in checkpoints[1:]:
