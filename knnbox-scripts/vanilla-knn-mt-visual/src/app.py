@@ -69,7 +69,7 @@ def knn_main():
             with st.spinner('Wait for it...'):
                 records = get_value_frequency(path_of_datasotre, path_of_dictionary) 
                 datastore_cfgs = get_datastore_cfgs(path_of_datasotre)
-                datastore_entries_size = datastore_cfgs["capcity"]
+                datastore_entries_size = datastore_cfgs["data_infos"]["keys"]["shape"][0]
                 datastore_word_size = len(records)
             st.success("Done")
 

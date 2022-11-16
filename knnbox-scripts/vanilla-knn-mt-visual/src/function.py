@@ -27,6 +27,8 @@ from fairseq.data import Dictionary, FairseqDataset, data_utils, encoders, itera
 from fairseq.dataclass.utils import gen_parser_from_dataclass
 from knn_sequence_generator import KNNSequenceGenerator
 
+from knnbox.utils import Memmap
+
 @st.cache(allow_output_mutation=True)
 def get_icon():
     icon = Image.open("./src/logo_transparent.png")
@@ -55,15 +57,14 @@ def get_spatial_distribution(datastore_path, dictionary_path, sample_nums=30000,
     with open(os.path.join(datastore_path, "config.json")) as file:
         config = json.load(file)
     # load keys and values
-    keys = np.memmap(os.path.join(datastore_path, "keys"), 
-            dtype=config["key_dtype"].split("_")[1], shape=(config["capcity"], config["key_dim"]))
-    values = np.memmap(os.path.join(datastore_path, "values"),
-            dtype=config["value_dtype"].split("_")[1], shape=(config["capcity"], config["value_dim"])
-    )
-    sample_indices = np.random.choice(config["capcity"], size=sample_nums, replace=False)
+    keys = Memmap(os.path.join(datastore_path, "keys.npy"), 
+            dtype=config["data_infos"]["keys"]["dtype"], shape=config["data_infos"]["keys"]["shape"])
+    values = Memmap(os.path.join(datastore_path, "vals.npy"),
+            dtype=config["data_infos"]["vals"]["dtype"], shape=config["data_infos"]["vals"]["shape"])
+    sample_indices = np.random.choice(config["data_infos"]["keys"]["shape"][0], size=sample_nums, replace=False)
 
-    sampled_keys = keys[sample_indices]
-    sample_values = values[sample_indices, 0]
+    sampled_keys = keys.data[sample_indices]
+    sample_values = values.data[sample_indices]
     dictionary = Dictionary.load(dictionary_path)
     words = [dictionary[i] for i in sample_values]
 
@@ -77,14 +78,6 @@ def get_spatial_distribution(datastore_path, dictionary_path, sample_nums=30000,
         "y": pca_sampled_keys[:,1],
         "value": words,
     })
-    # pca.fit(keys)
-    # pca_keys = pca.transform(keys)
-    # detailed_words = [dictionary[i] for i in values[:, 0]]
-    # detailed_df = pd.DataFrame({
-    #     "x": pca_keys[:, 0],
-    #     "y": pca_keys[:, 1],
-    #     "value": detailed_words,
-    # })
     
     selector = alt.selection_single(fields=["value"])
     chart = alt.Chart(df).mark_circle(size=100).encode(
@@ -95,7 +88,6 @@ def get_spatial_distribution(datastore_path, dictionary_path, sample_nums=30000,
         tooltip = ["x", "y", "value"],
     ).add_selection(selector).interactive()
     
-
     # release memory
     del keys
     del values
@@ -105,60 +97,6 @@ def get_spatial_distribution(datastore_path, dictionary_path, sample_nums=30000,
     del dictionary
 
     return chart
-
-
-@st.cache(allow_output_mutation=True)
-def get_word_spatial_distribution(datastore_path, dictionary_path, word):
-    r""" return a word's distribution """
-    with open(os.path.join(datastore_path, "config.json")) as file:
-        config = json.load(file)
-    # load keys and values
-    keys = np.memmap(os.path.join(datastore_path, "keys"), 
-            dtype=config["key_dtype"].split("_")[1], shape=(config["capcity"], config["key_dim"]))
-    values = np.memmap(os.path.join(datastore_path, "values"),
-            dtype=config["value_dtype"].split("_")[1], shape=(config["capcity"], config["value_dim"])
-    )
-    dictionary = Dictionary.load(dictionary_path)
-
-    word_indices = {}
-    for v in values[:,0]:
-        if dictionary[i] == word:
-            word_idx.append(word_indices)
-    
-    word_indices = np.array(word_indices)
-
-    word_keys = keys[word_indices]
-    words = [word] * len(word_indices)
-
-    # PCA key to 2 dimesion
-    pca = PCA(n_components=2)
-    pca.fit(word_keys)
-    pca_word_keys = pca.transform(word_keys)
-
-    df = pd.DataFrame({
-        "x": pca_word_keys[:,0],
-        "y": pca_word_keys[:,1],
-        "value": words,
-    })
-
-    chart = alt.Chart(df).mark_circle(size=100).encode(
-        x = "x",
-        y = "y",
-        color = "value",
-        # color = "value",
-        tooltip = ["x", "y", "value"],
-    ).interactive().properties(400)
-    
-
-    # release memory
-    del keys
-    del values
-    del word_keys
-    del words
-    del dictionary
-
-    return chart
-
 
 
 def display_partial_records(frequency_records, ratio, display_sz=20): 
@@ -201,13 +139,12 @@ def get_value_frequency(datastore_path, dictionary_path):
         config = json.load(file)
 
     # load values
-    values = np.memmap(os.path.join(datastore_path, "values"),
-            dtype=config["value_dtype"].split("_")[1], shape=(config["capcity"], config["value_dim"])
-    )
+    values = Memmap(os.path.join(datastore_path, "vals.npy"),
+            dtype=config["data_infos"]["vals"]["dtype"], shape=config["data_infos"]["vals"]["shape"])
     dictionary = Dictionary.load(dictionary_path)
 
     records = {}
-    for i in values[:,0]:
+    for i in values.data:
         word = dictionary[i]
         if word not in records:
             records[word] = 1
@@ -218,7 +155,7 @@ def get_value_frequency(datastore_path, dictionary_path):
     for k, v in records.items():
         record_list.append([k, v])
     record_list.sort(key=lambda r: r[1], reverse=True)
-    # 对records进行排序
+    # sort by frequency
     return record_list
 
 

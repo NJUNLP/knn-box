@@ -2,7 +2,7 @@
 [script description]: download pre-trained neural models, pre-processed multi-domain dataset 
 and create folder to store them.
 
-Hint: If your server's network can't access google driver or dl.fbaipublicfiles.com, you can:
+Hint: If your server's network can't access google driver or dl.fbaipublicfiles.com, you can
 step 1. download models and datasets from another machine, link are placed below
 step 2. copy them to current folder
 step 3. comment the download instructions below and then execute the remaining instructions
