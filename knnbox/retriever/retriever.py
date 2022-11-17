@@ -1,5 +1,5 @@
-from ..utils import retrieve_k_nearest
 import torch
+from knnbox.retriever.utils import retrieve_k_nearest
 
 class Retriever:
     def __init__(self, datastore, k):

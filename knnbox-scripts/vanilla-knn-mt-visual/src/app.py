@@ -42,11 +42,11 @@ def knn_main():
         with st.form("ds_path"):
             path_of_datasotre = st.text_input(
                 label="Paste the path of datastore below",
-                value="/data1/zhaoqf/0101/fairseq/datastore/vanilla/zh-en-laws"
-                )
+                value="/data1/zhaoqf/0101/knn-box/datastore/vanilla/koran"
+            )
             path_of_dictionary = st.text_input(
                 label="Paste the path of target language dictionary",
-                value="/data1/zhaoqf/0101/fairseq/data-bin/zh-en-laws/dict.en.txt",
+                value="/data1/zhaoqf/0101/knn-box/data-bin/koran/dict.en.txt",
             )
             path_submit = st.form_submit_button(label="✨ Get me the profile!")
         

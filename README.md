@@ -15,12 +15,13 @@ In this toolkit, we provide reference implementations of various papers:
 * extensible: easy to develope new kNN-MT models with our toolkit.
 
 ## Requirements and Installation
-* python >= 3.6
+* python >= 3.7
 * pytorch >= 1.5.0
+* 1.19.0 <= numpy < 1.20.0
 * faiss-gpu >= 1.6.5
 * sacremoses == 0.0.41
 * sacrebleu == 1.5.1
-* 1.19.0 <= numpy < 1.20.0
+* fastBPE == 0.1.0
 
 You can install this toolkit by
 ```shell
@@ -116,7 +117,7 @@ and then execute the following command:
 cd knnbox-scripts/vanilla-knn-mt-visual
 # step 1. build datastore for visualization 
 # (the visual datastore will save addtional information compared to noraml version datastore)
-bash build_datastore.sh
+bash build_datastore_visual.sh
 # step 2. Configure the information for the model you want to visualize
 vim model_configs.yml #Refer to the example configuration to modify.
 # step 3. lanuch the web page

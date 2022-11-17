@@ -11,10 +11,11 @@ from fairseq.models import (
     register_model_architecture,
 )
 
-from knnbox.utils import (
+from knnbox.common_utils import (
     global_vars,
     select_keys_with_pad_mask, 
-    archs, disable_model_grad, 
+    archs, 
+    disable_model_grad, 
     enable_module_grad,
 )
 from knnbox.datastore import Datastore
@@ -97,9 +98,10 @@ class KernelSmoothedKNNMTDecoder(TransformerDecoder):
 
                 ## maybe you are confused because you can't find out the code about
                 ## saving AdaptiveCombiner to args.knn_combiner_path directory.
-                ## To save the combiner whenever we got a best checkpoint, I write some ugly code.
+                ## To save the combiner whenever we got a best checkpoint, I have to write some ugly code.
                 ## you can find the code inside `fairseq.checkpoint_utils.save_checkpoint` function.
                 ## In fact, we shouldn't modify the fairseq code, but there is no better way
+                ## to save a single module instead of entire translation model.
             
     def forward(
         self,
@@ -153,12 +155,8 @@ class KernelSmoothedKNNMTDecoder(TransformerDecoder):
         step 2.
             combine the knn probability with NMT's probability 
         """
-        if self.args.knn_mode == "inference":
+        if self.args.knn_mode == "inference" or self.args.knn_mode == "train_kster":
             knn_prob = self.combiner.get_knn_prob(**self.retriever.results, device=net_output[0].device)
-            combined_prob, _ = self.combiner.get_combined_prob(knn_prob, net_output[0], log_probs=log_probs)
-            return combined_prob
-        elif self.args.knn_mode == "train_kster":
-            knn_prob = self.combiner.get_knn_prob(**self.retriever.results, train_KSTER=True, device=net_output[0].device)
             combined_prob, _ = self.combiner.get_combined_prob(knn_prob, net_output[0], log_probs=log_probs)
             return combined_prob
         else:

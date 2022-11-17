@@ -1,6 +1,7 @@
 import os
 import json
-from ..utils import Memmap, read_config, build_faiss_index, load_faiss_index, write_config 
+from knnbox.common_utils import Memmap, read_config, write_config
+from knnbox.datastore.utils import build_faiss_index, load_faiss_index 
 
 
 class Datastore:

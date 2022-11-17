@@ -2,8 +2,8 @@
 # Efficient has a cache. when EfficientRetriever retrieve, It preferentially queries from the cache. 
 # If there are no entries close enough in the cache, it queries from the datastore
 
-from ..utils import retrieve_k_nearest
 import torch
+from knnbox.retriever.utils import retrieve_k_nearest
 
 class EfficientRetriever:
     def __init__(self, datastore, k, enable_cache=False, knn_cache_threshold=6):

@@ -17,8 +17,7 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $D
 --beam 4 --lenpen 0.6 --max-len-a 1.2 --max-len-b 10 --source-lang de --target-lang en \
 --gen-subset test \
 --model-overrides "{'eval_bleu': False, 'required_seq_len_multiple':1, 'load_alignments': False}" \
---max-tokens 1024 \
---max-tokens-valid 10000 \
+--max-tokens 4096 \
 --scoring sacrebleu \
 --tokenizer moses --remove-bpe \
 --arch kernel_smoothed_knn_mt@transformer_wmt19_de_en \

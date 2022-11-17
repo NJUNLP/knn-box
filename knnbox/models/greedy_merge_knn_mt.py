@@ -11,10 +11,13 @@ from fairseq.models import (
     register_model_architecture,
 )
 
-from knnbox.utils import global_vars, select_keys_with_pad_mask, archs
+from knnbox.common_utils import global_vars, select_keys_with_pad_mask, archs
 from knnbox.datastore import Datastore
 from knnbox.retriever import Retriever
 from knnbox.combiner import Combiner
+
+# here must use relative path `.vanilla_knn_mt` instead of `knnbox.models.vanilla_knn_mt`
+# otherwise fairseq will regist vanilla_knn_mt twice and cause an error.
 from .vanilla_knn_mt import VanillaKNNMT, VanillaKNNMTDecoder
 
 

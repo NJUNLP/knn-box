@@ -11,7 +11,7 @@ from fairseq.models import (
     register_model_architecture,
 )
 
-from knnbox.utils import global_vars, select_keys_with_pad_mask, archs
+from knnbox.common_utils import global_vars, select_keys_with_pad_mask, archs
 from knnbox.datastore import Datastore
 from knnbox.retriever import Retriever
 from knnbox.combiner import Combiner

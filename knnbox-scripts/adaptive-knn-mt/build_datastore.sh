@@ -24,6 +24,6 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/validate.py $D
 --max-tokens 4096 \
 --bpe fastbpe \
 --user-dir $PROJECT_PATH/knnbox/models \
---arch "adaptive_knn_mt@transformer_wmt19_de_en" \
---knn-mode "build_datastore" \
+--arch adaptive_knn_mt@transformer_wmt19_de_en \
+--knn-mode build_datastore \
 --knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \

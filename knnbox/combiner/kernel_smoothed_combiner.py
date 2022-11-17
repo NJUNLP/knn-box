@@ -1,30 +1,23 @@
-# learning kernel-smoothed machine translation with retrieved examples  
+import os
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import os
-from ..utils import read_config, write_config
+
+from knnbox.common_utils import read_config, write_config
+from knnbox.combiner.utils import calculate_combined_prob
 
 class KernelSmoothedCombiner(nn.Module):
     r"""
-    kernel smoothed combiner"""
-
-    def __init__(self, query_dim, probability_dim, bandwidth_estimator=None, weight_estimator=None, device='cuda:0', kernel_type='laplacian'):
+    combiner for kernel smoothed knn-mt
+    """
+    def __init__(self, query_dim, probability_dim, device='cuda:0', kernel_type='laplacian'):
         super().__init__()
-        if bandwidth_estimator is None:
-            self.bandwidth_estimator = BandwidthEstimator(query_dim=query_dim, device=device)
-        else:
-            self.bandwidth_estimator = bandwidth_estimator.to(device)
-        
-        if weight_estimator is None:
-            self.weight_estimator = WeightEstimator(query_dim=query_dim,device=device)
-        else:
-            self.weight_estimator = weight_estimator.to(device)
-        
-        self.bandwidth_estimator.cuda()
-        self.weight_estimator.cuda()
 
+        self.bandwidth_estimator = BandwidthEstimator(query_dim=query_dim, device=device)
+        self.weight_estimator = WeightEstimator(query_dim=query_dim, device=device)
+        
+        self.device = device 
         self.query_dim = query_dim
         self.probability_dim = probability_dim
         self.kernel_type = kernel_type
@@ -32,11 +25,10 @@ class KernelSmoothedCombiner(nn.Module):
 
 
 
-    def get_knn_prob(self, query, keys, distances, vals, device="cpu", train_KSTER=False, **kwargs):
+    def get_knn_prob(self, query, keys, vals, distances, device="cuda:0", **kwargs):
         r"""caculate the knn prob """
-
         # if we are training KSTER, drop the nearest key value pair
-        if train_KSTER is True:
+        if self.training:
             keys = keys[...,1:,:]
             vals = vals[...,1:]
             distances = distances[...,1:]
@@ -48,6 +40,7 @@ class KernelSmoothedCombiner(nn.Module):
         # query and average_key may be half precision, convert them to float32 first
         query = query.float()
         average_key = average_key.float()
+        # bandwidth, i.e. temperature
         bandwidth = self.bandwidth_estimator(query, average_key) # [..., k]
 
         # caclulate knn_probs
@@ -75,46 +68,18 @@ class KernelSmoothedCombiner(nn.Module):
         return knn_probs
 
 
+
     def get_combined_prob(self, knn_prob, neural_model_logit, log_probs=False):
         r""" 
-        strategy of combine probability """
-        neural_model_prob = F.softmax(neural_model_logit, dim=-1)
-        combined_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
-        # some extra infomation
-        extra = {}
-        extra["neural_probs"] = neural_model_prob
-        extra["unlog_combined_probs"] = combined_probs
-        
-        if log_probs:
-            combined_probs =  torch.log(combined_probs)
-
-        return combined_probs, extra
-
-    @staticmethod
-    def load(path):
-        r"""
-        load kernel smoothed integrator from disk"""
-        config = read_config(path)
-        print(config)
-        query_dim = config["query_dim"]
-        probability_dim = config["probability_dim"]
-        kernel_type = config["kernel_type"]
-        with open(os.path.join(path, "bandwidth_estimator.pt"), "rb") as f:
-            bandwidth_estimator_state_dict = torch.load(f)
-        with open(os.path.join(path, "weight_estimator.pt"), "rb") as f:
-            weight_estimator_state_dict = torch.load(f)
-        bandwidth_model = BandwidthEstimator(query_dim)
-        weight_model = WeightEstimator(query_dim)
-        bandwidth_model.load_state_dict(bandwidth_estimator_state_dict)
-        weight_model.load_state_dict(weight_estimator_state_dict)
-        return KernelSmoothedCombiner(query_dim, probability_dim, 
-            bandwidth_estimator=bandwidth_model, weight_estimator=weight_model,kernel_type=kernel_type)
-
+        strategy of combine probability 
+        """
+        return calculate_combined_prob(knn_prob, neural_model_logit, self.lambda_, log_probs) 
 
 
     def dump(self, path):
         r"""
-        dump a kernel smoothed integrator to disk"""
+        dump a kernel smoothed combiner to disk"""
+        # step 1. dump the config
         if not os.path.exists(path):
             os.makedirs(path)
         config = {}
@@ -122,8 +87,23 @@ class KernelSmoothedCombiner(nn.Module):
         config["probability_dim"] = self.probability_dim
         config["kernel_type"] = self.kernel_type
         write_config(path, config)
-        torch.save(self.bandwidth_estimator.state_dict(), os.path.join(path, "bandwidth_estimator.pt"))
-        torch.save(self.weight_estimator.state_dict(), os.path.join(path, "weight_estimator.pt"))
+        # step 2. dump the model
+        torch.save(self.state_dict(), os.path.join(path, "kernel_smoothed_combiner.pt"))
+
+
+    @classmethod
+    def load(cls, path):
+        r"""
+        load kernel smoothed combiner from disk"""
+        # step 1. load the config
+        config = read_config(path)
+        kernel_smoothed_combiner = cls(**config)
+
+        # step 2. load the model state dict
+        kernel_smoothed_combiner.load_state_dict(
+                torch.load(os.path.join(path, "kernel_smoothed_combiner.pt")))
+         
+        return kernel_smoothed_combiner
 
 
 
@@ -145,7 +125,7 @@ class WeightEstimator(nn.Module):
     def __init__(self, query_dim, device='cuda:0'):
         super().__init__()
         self.model = nn.Sequential(
-            nn.Linear(query_dim * 2, query_dim), # we set inner dimmension to 256
+            nn.Linear(query_dim * 2, query_dim),
             nn.ReLU(),
             nn.Linear(query_dim, 1),
             nn.Sigmoid(),

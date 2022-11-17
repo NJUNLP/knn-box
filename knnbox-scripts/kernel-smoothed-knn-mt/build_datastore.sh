@@ -26,4 +26,4 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/validate.py $D
 --user-dir $PROJECT_PATH/knnbox/models \
 --arch kernel_smoothed_knn_mt@transformer_wmt19_de_en \
 --knn-mode build_datastore \
---knn-datastore-path $PROJECT_PATH/datastore/adaptive/medical \
+--knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \

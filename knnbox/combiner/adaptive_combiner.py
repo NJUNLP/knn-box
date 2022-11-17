@@ -3,191 +3,221 @@ from torch import nn
 import torch.nn.functional as F
 import math
 import os
-from ..utils import read_config, write_config
+from knnbox.common_utils import read_config, write_config
+from knnbox.combiner.utils import calculate_combined_prob
 
 
 class AdaptiveCombiner(nn.Module):
-    def __init__(self, probability_dim, model = None, max_k = 32, **kwargs):
+    r""" Adaptive knn-mt Combiner """
+    def __init__(self, 
+                max_k,
+                probability_dim,
+                k_trainable = True,
+                lambda_trainable = True,
+                temperature_trainable = True,
+                **kwargs
+                ):
         super().__init__()
-        if model is None:
-            # use meta K network
-            self.model = MetaKNetwork(max_k=max_k, temperature_trainable=False, temperature=10)
-        else:
-            self.model = model
+        self.meta_k_network = MetaKNetwork(max_k, 
+                    k_trainable, lambda_trainable, temperature_trainable, **kwargs)
         
-        # move model to gpu
-        self.model.cuda()
         self.max_k = max_k
-        # TODO: temperature can be trained also
-        self.temperature = 10
         self.probability_dim = probability_dim
-        self.lambda_ = None
-        self.knn_prob = None
+        self.k_trainable = k_trainable
+        self.lambda_trainable = lambda_trainable
+        self.temperature_trainable = temperature_trainable
+        self.kwargs = kwargs 
+        self.mask_for_distance = None
 
-
-    def get_knn_prob(self, distances, vals, device, **kwargs):
+        # check
+        assert self.k_trainable or "k" in kwargs, \
+            "if k is not trainable, you should provide a fixed k value"
+        assert self.lambda_trainable or "lambda_" in kwargs, \
+            "if lambda is not trainable, you should provide a fixed lambda_ value"
+        assert self.temperature_trainable or "temperature" in kwargs, \
+            "if temperature is not trainable, you should provide a fixed temperature"
         
+        self.k = None if self.k_trainable else kwargs["k"]
+        self.lambda_ = None if self.lambda_trainable else kwargs["lambda_"]
+        self.temperature = None if self.temperature_trainable else kwargs["temperature"]
 
-        net_outputs = self.model(distances=distances, vals=vals)
-        k_prob = net_outputs
 
-        # TODO: slice operation should be more general, may there are not exactly 3 dim
-        lambda_ = 1.0 - k_prob[:, :, 0:1] 
-        k_soft_prob = k_prob[:,:,1:]
-        knn_prob = self._caculate_select_knn_prob(vals, distances, self.temperature, k_soft_prob, device)
-        self.lambda_ = lambda_
-        self.knn_prob = knn_prob
+    def get_knn_prob(self, vals, distances, device="cuda:0"):
+        metak_outputs = self.meta_k_network(vals, distances)
+
+        if self.lambda_trainable:
+            self.lambda_ = metak_outputs["lambda_net_output"]
+        
+        if self.temperature_trainable:
+            self.temperature = metak_outputs["temperature_net_output"]
+        
+        if self.k_trainable:
+            # generate mask_for_distance just for once
+            if not hasattr(self, "mask_for_distance") or self.mask_for_distance is None:
+                self.mask_for_distance = self._generate_mask_for_distance(self.max_k, device)
+            
+            k_probs = metak_outputs["k_net_output"]
+            B, S, K = vals.size()
+            R_K = k_probs.size(-1)
+
+            distances = distances.unsqueeze(-2).expand(B, S, R_K, K)
+            distances = distances * self.mask_for_distance  # [B, S, R_K, K]
+            if self.temperature_trainable:
+                temperature = self.temperature.unsqueeze(-1).expand(B, S, R_K, K)
+            else:
+                temperature = self.temperature
+            distances = - distances / temperature
+
+            knn_weight = torch.softmax(distances, dim=-1)  # [B, S, R_K, K]
+            weight_sum_knn_weight = torch.matmul(k_probs.unsqueeze(-2), knn_weight).squeeze(-2).unsqueeze(-1)  # [B, S, K, 1]
+            knn_prob = torch.zeros(B, S, K, self.probability_dim, device=device)  # [B, S, K, Vocab Size]
+            # construct the knn 
+            knn_prob.scatter_(src=weight_sum_knn_weight.float(), index=vals.unsqueeze(-1), dim=-1)
+            knn_prob = knn_prob.sum(dim=-2)  # [Batch Size, seq len, vocab size]
+
+        else:
+            # if k is not trainable, the process of calculate knn probs is same as vanilla knn-mt
+            knn_prob = calculate_knn_prob(vals, distances, self.probability_dim,
+                        self.temperature, device=device)
 
         return knn_prob
-
-
-
-    def get_combined_prob(self, knn_prob, neural_model_logit, log_probs=False):
-        # the policy to combine knn_prob and neural_model_prob
-        neural_model_prob = F.softmax(neural_model_logit, dim=-1)
-        combined_probs = knn_prob * self.lambda_ + neural_model_prob * (1 - self.lambda_)
-        # some extra infomation
-        extra = {}
-        extra["neural_probs"] = neural_model_prob
-        extra["unlog_combined_probs"] = combined_probs
-
-        if log_probs:
-            combined_probs =  torch.log(combined_probs)
-        return combined_probs, extra
-    
-
-
-    def _caculate_select_knn_prob(self, vals, distances, temperature, knn_select_prob, device):
-        r""" using k select prob to caculate knn prob """
-        B, S, K = distances.size()
-        R_K = knn_select_prob.size(-1)
-
-        # caculate mask for distance if not exist
-        if hasattr(self, "mask_for_distance") is False:
-            k_mask = torch.empty((self.max_k, self.max_k)).fill_(999.)
-            k_mask = torch.triu(k_mask, diagonal=1) + 1
-
-            power_index = torch.tensor([pow(2, i) - 1 for i in range(0, int(math.log(self.max_k, 2)) + 1)])
-            k_mask = k_mask[power_index]
-
-            k_mask.requires_grad = False
-            k_mask = k_mask.to(device)
-            self.mask_for_distance = k_mask
         
-        distances = distances.unsqueeze(-2).expand(B, S, R_K, K)
-        distances = distances * self.mask_for_distance
-        scaled_dists = - distances / temperature
-        knn_weight = torch.softmax(scaled_dists, dim=-1)  # [B, S, R_K, K]
-        weight_sum_knn_weight = torch.matmul(knn_select_prob.unsqueeze(-2), knn_weight).squeeze(-2).unsqueeze(-1)  # [B, S, K, 1]
-        knn_tgt_prob = torch.zeros(B, S, K, self.probability_dim, device=device)  # [B, S, K, Vocab Size]
-        vals = vals.unsqueeze_(-1)  # [B, S, K, 1]
+    
+    def get_combined_prob(self, knn_prob, neural_model_logit, log_probs=False):
+        r""" get combined probs of knn_prob and neural_model_prob """
+        return calculate_combined_prob(knn_prob, neural_model_logit, self.lambda_, log_probs)
 
-        knn_tgt_prob.scatter_(src=weight_sum_knn_weight.float(), index=vals, dim=-1)
-        prob = knn_tgt_prob.sum(dim=-2)  # [Batch Size, seq len, vocab size]
 
-        return prob
+    def dump(self, path):
+        r""" dump the adaptive knn-mt to disk """
+        # step 1. write config
+        config = {}
+        config["max_k"] = self.max_k
+        config["probability_dim"] = self.probability_dim
+        config["k_trainable"] = self.k_trainable
+        config["lambda_trainable"] = self.lambda_trainable
+        config["temperature_trainable"] = self.temperature_trainable
+        for k, v in self.kwargs.items():
+            config[k] = v
+        write_config(path, config)
+        # step 2. save model
+        torch.save(self.state_dict(), os.path.join(path, "adaptive_combiner.pt"))
 
+
+    @classmethod
+    def load(cls, path):
+        r""" load the adaptive knn-mt from disk """
+        config = read_config(path)
+        adaptive_combiner = cls(**config)
+
+        adaptive_combiner.load_state_dict(torch.load(os.path.join(path, "adaptive_combiner.pt")))
+        return adaptive_combiner
+    
 
     @staticmethod
-    def load(path):
-        r"""
-        load an AdaptiveCombiner from disk
-        """
-        with open(os.path.join(path, "model.pt"), "rb") as f:
-            state_dict = torch.load(f)
-        config = read_config(path)
-
-        model = MetaKNetwork(max_k=config["max_k"])
-        model.load_state_dict(state_dict)
-        return AdaptiveCombiner(
-            model=model, 
-            probability_dim = config["probability_dim"],
-            max_k = config["max_k"],
-            temperature = config["temperature"],
-            )
-    
-    
-    def dump(self, path):
-        r"""
-        save the AdaptiveCombiner to disk
-        """
-        # create folder if not exist
-        if not os.path.exists(path):
-            os.makedirs(path)
-        config = {}
-        config["probability_dim"] = self.probability_dim
-        config["max_k"] = self.max_k
-        config["temperature"] = self.temperature
-        write_config(path, config)
-        torch.save(self.model.state_dict(), os.path.join(path, "model.pt"))
+    def _generate_mask_for_distance(max_k, device):
+        k_mask = torch.empty((max_k, max_k)).fill_(999.)
+        k_mask = torch.triu(k_mask, diagonal=1) + 1
+        power_index = torch.tensor([pow(2, i) - 1 for i in range(0, int(math.log(max_k, 2)) + 1)])
+        k_mask = k_mask[power_index]
+        k_mask.requires_grad = False
+        k_mask = k_mask.to(device)
+        return k_mask
 
 
 
 class MetaKNetwork(nn.Module):
-    r""" meta k network in knn-mt """
-    
-    def __init__(self, 
-                max_k = 32,
-                k_trainable = True,
-                lambda_trainable=True,
-                temperature_trainable=True,
-                label_count_as_feature=True,
-                k_lambda_net_hid_size=32,
-                k_lambda_net_drop_rate=0.0,
-                relative_label_count=False,
-                device="cuda:0",
-                **kwargs,
-                ):
-
+    r""" meta k network of adaptive knn-mt """
+    def __init__(
+        self,
+        max_k = 32,
+        k_trainable = True,
+        lambda_trainable = True,
+        temperature_trainable = True,
+        k_net_hid_size = 32,
+        lambda_net_hid_size = 32,
+        temperature_net_hid_size = 32,
+        k_net_dropout_rate = 0.0,
+        lambda_net_dropout_rate = 0.0,
+        temperature_net_dropout_rate = 0.0,
+        label_count_as_feature = True,
+        relative_label_count = False,
+        device = "cuda:0",
+        **kwargs,
+    ):
         super().__init__()
-        self.max_k = max_k
+        self.max_k = max_k    
         self.k_trainable = k_trainable
         self.lambda_trainable = lambda_trainable
         self.temperature_trainable = temperature_trainable
         self.label_count_as_feature = label_count_as_feature
-        self.k_lambda_net_hid_size = k_lambda_net_hid_size
-        self.k_lambda_net_drop_rate = k_lambda_net_drop_rate
-        self.lambda_ = kwargs.get("lambda_", None)
-        self.temperature = kwargs.get("temperature", None)
-        self.k = kwargs.get("k", None)
         self.relative_label_count = relative_label_count
+        self.device = device
         self.mask_for_label_count = None
 
-
-        
-        if self.k_trainable and self.lambda_trainable:
-            self.retrieve_result_to_k_and_lambda = nn.Sequential(
-                nn.Linear(max_k if not label_count_as_feature else max_k*2, k_lambda_net_hid_size),
-                nn.Tanh(),
-                nn.Dropout(p=self.k_lambda_net_drop_rate),
-                nn.Linear(k_lambda_net_hid_size, 2+int(math.log(max_k, 2))), #[0, 1, 2, 4, 8 ..., max_k]
-                nn.Softmax(dim=-1) 
-            )
-
-            # param init
-            nn.init.xavier_normal_(self.retrieve_result_to_k_and_lambda[0].weight[:, : self.max_k], gain=0.01)
+        if k_trainable:
+            self.distance_to_k = nn.Sequential(
+                    nn.Linear(self.max_k*2 if self.label_count_as_feature else self.max_k, k_net_hid_size),
+                    nn.Tanh(),
+                    nn.Dropout(p=k_net_dropout_rate),
+                    nn.Linear(k_net_hid_size, int(math.log(self.max_k, 2))+1),
+                    nn.Softmax(dim=-1)
+                ) # [1 neighbor, 2 neighbor, 4 neighbor, 8 neighbor, ..]
             if self.label_count_as_feature:
-                nn.init.xavier_normal_(self.retrieve_result_to_k_and_lambda[0].weight[:,self.max_k:], gain=0.01)
+                nn.init.normal_(self.distance_to_k[0].weight[:, :self.max_k], mean=0, std=0.01)
+                nn.init.normal_(self.distance_to_k[0].weight[:, self.max_k:], mean=0, std=0.1)
+            else:
+                nn.init.normal_(self.distance_to_k[0].weight, mean=0, std=0.01)
+
+        if lambda_trainable:
+            self.distance_to_lambda = nn.Sequential(
+                    nn.Linear(self.max_k*2 if self.label_count_as_feature else self.max_k, lambda_net_hid_size),
+                    nn.Tanh(),
+                    nn.Dropout(p=lambda_net_dropout_rate),
+                    nn.Linear(lambda_net_hid_size, 1),
+                    nn.Sigmoid()
+                )
+
+            if self.label_count_as_feature:
+                nn.init.xavier_normal_(self.distance_to_lambda[0].weight[:, :self.max_k], gain=0.01)
+                nn.init.xavier_normal_(self.distance_to_lambda[0].weight[:, self.max_k:], gain=0.1)
+                nn.init.xavier_normal_(self.distance_to_lambda[-2].weight)
+            else:
+                nn.init.normal_(self.distance_to_lambda[0].weight, mean=0, std=0.01)
         
+        if temperature_trainable:
+            self.distance_to_temperature = nn.Sequential(
+                    nn.Linear(self.max_k*2 if self.label_count_as_feature else self.max_k,
+                            temperature_net_hid_size),
+                    nn.Tanh(),
+                    nn.Dropout(p=temperature_net_dropout_rate),
+                    nn.Linear(temperature_net_hid_size, 1),
+                    nn.Sigmoid()
+                )
+            if self.label_count_as_feature:
+                nn.init.xavier_normal_(self.distance_to_temperature[0].weight[:, :self.max_k], gain=0.01)
+                nn.init.xavier_normal_(self.distance_to_temperature[0].weight[:, self.max_k:], gain=0.1)
+                nn.init.xavier_normal_(self.distance_to_temperature[-2].weight)
+            else:
+                nn.init.normal_(self.distance_to_temperature[0].weight, mean=0, std=0.01)
 
 
-    
-    def forward(self, distances, vals):
+    def forward(self, vals, distances):
         if self.label_count_as_feature:
             label_counts = self._get_label_count_segment(vals, relative=self.relative_label_count)
             network_inputs = torch.cat((distances.detach(), label_counts.detach().float()), dim=-1)
         else:
             network_inputs = distances.detach()
-
-        if self.temperature_trainable:
-            knn_temperature = None
-        else:
-            knn_temperature = self.temperature
         
-        net_outputs = self.retrieve_result_to_k_and_lambda(network_inputs)
+        results = {}
         
-        return net_outputs
-
+        results["k_net_output"] = self.distance_to_k(network_inputs) if self.k_trainable else None
+        results["lambda_net_output"] = self.distance_to_lambda(network_inputs) if self.lambda_trainable else None
+        results["temperature_net_output"] = self.distance_to_temperature(network_inputs) \
+                    if self.temperature_trainable else None
+        
+        return results
+    
 
     def _get_label_count_segment(self, vals, relative=False):
         r""" this function return the label counts for different range of k nearest neighbor 
@@ -221,10 +251,3 @@ class MetaKNetwork(nn.Module):
         return retrieve_label_counts
 
 
-
-
-
-     
-
-
-        

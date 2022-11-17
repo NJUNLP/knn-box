@@ -1,7 +1,7 @@
-from . import Retriever
-from ..datastore import Datastore
-from ..utils import retrieve_k_nearest
 import numpy as np
+from knnbox.retriever import Retriever
+from knnbox.datastore import Datastore
+from knnbox.retriever.utils import retrieve_k_nearest
 
 class FastRetriever:
     def __init__(self, k, shard_datastore):

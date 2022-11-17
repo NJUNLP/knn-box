@@ -27,7 +27,7 @@ from fairseq.data import Dictionary, FairseqDataset, data_utils, encoders, itera
 from fairseq.dataclass.utils import gen_parser_from_dataclass
 from knn_sequence_generator import KNNSequenceGenerator
 
-from knnbox.utils import Memmap
+from knnbox.common_utils import Memmap
 
 @st.cache(allow_output_mutation=True)
 def get_icon():

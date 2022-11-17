@@ -1,12 +1,15 @@
 import os
 import json
-from ..utils import Memmap, read_config, build_faiss_index, load_faiss_index, write_config, label_smoothed_nll_loss
-from torch.utils.data import Dataset, Dataloader
 import torch.nn as nn
 import torch.optimer as optim
 import tqdm
 import time
 from multiprocessing import Pool
+
+from torch.utils.data import Dataset, Dataloader
+
+from knnbox.common_utils import Memmap, read_config, write_config, label_smoothed_nll_loss
+from knnbox.datastore.utils import build_faiss_index, load_faiss_index
 
 class PckDatastore:
     r"""

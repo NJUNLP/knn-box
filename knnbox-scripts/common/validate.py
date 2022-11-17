@@ -20,7 +20,7 @@ from fairseq.logging import metrics, progress_bar
 
 ## knnbox related code start >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
 from knnbox.datastore import Datastore, GreedyMergeDatastore
-from knnbox.utils import filter_pad_tokens, global_vars
+from knnbox.common_utils import filter_pad_tokens, global_vars
 import numpy as np
 ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end
 
@@ -82,9 +82,9 @@ def main(args, override_args=None):
     if "datastore" not in global_vars():
         # create suitable datastore class if not exists
         if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "kernel_smoothed_knn_mt", "vanilla_knn_mt_visual"]:
-            global_vars()["datastore"] = Datastore(path=args.datastore_path)
+            global_vars()["datastore"] = Datastore(path=args.knn_datastore_path)
         if knn_type == "greedy_merge_knn_mt":
-            global_vars()["datastore"] = GreedyMergeDatastore(path=args.datastore_path)
+            global_vars()["datastore"] = GreedyMergeDatastore(path=args.knn_datastore_path)
     datastore = global_vars()["datastore"]
     ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end
 
@@ -169,7 +169,7 @@ def main(args, override_args=None):
     
 
     ## knnbox related code start >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-    if knn_type in ["vanilla_knn_mt", "adptive_knn_mt", "kernel_smoothed_knn_mt", "vanilla_knn_mt_visual"]:
+    if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "kernel_smoothed_knn_mt", "vanilla_knn_mt_visual"]:
         datastore.dump()    # dump to disk
         datastore.build_faiss_index("keys")   # build faiss index
     elif knn_type == "greedy_merge_knn_mt:":

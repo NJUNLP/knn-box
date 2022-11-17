@@ -6,7 +6,7 @@
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/medical
+DATA_PATH=$PROJECT_PATH/data-bin/koran
 
 
 CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
@@ -15,18 +15,17 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $D
 --dataset-impl mmap \
 --beam 4 --lenpen 0.6 --max-len-a 1.2 --max-len-b 10 --source-lang de --target-lang en \
 --gen-subset test \
---max-tokens 1024 \
---max-tokens-valid 10000 \
+--max-tokens 4096 \
 --scoring sacrebleu \
 --tokenizer moses \
 --remove-bpe \
 --user-dir $PROJECT_PATH/knnbox/models \
 --arch vanilla_knn_mt@transformer_wmt19_de_en \
 --knn-mode inference \
---knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \
---knn-k 4 \
+--knn-datastore-path $PROJECT_PATH/datastore/vanilla/koran \
+--knn-k 16 \
 --knn-lambda 0.8 \
---knn-temperature 10.0 \
+--knn-temperature 100.0 \
 
 
 

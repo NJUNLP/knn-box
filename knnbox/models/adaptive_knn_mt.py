@@ -11,16 +11,16 @@ from fairseq.models import (
     register_model_architecture,
 )
 
-from knnbox.utils import (
+from knnbox.common_utils import (
     global_vars,
     select_keys_with_pad_mask,
     disable_model_grad,
     enable_module_grad,
+    archs,
 )
 from knnbox.datastore import Datastore
 from knnbox.retriever import Retriever
 from knnbox.combiner import AdaptiveCombiner
-from knnbox.utils import archs
 
 
 @register_model("adaptive_knn_mt")
@@ -90,7 +90,8 @@ class AdaptiveKNNMTDecoder(TransformerDecoder):
             self.datastore.load_faiss_index("keys")
             self.retriever = Retriever(datastore=self.datastore, k=args.knn_max_k)
             if args.knn_mode == "train_metak":
-                self.combiner = AdaptiveCombiner(probability_dim=len(dictionary), max_k=args.knn_max_k)
+                self.combiner = AdaptiveCombiner(max_k=args.knn_max_k, probability_dim=len(dictionary),
+                            k_trainable=True, lambda_trainable=True, temperature_trainable=False, temperature=10.)
             elif args.knn_mode == "inference":
                 self.combiner = AdaptiveCombiner.load(args.knn_combiner_path)
 
@@ -99,6 +100,7 @@ class AdaptiveKNNMTDecoder(TransformerDecoder):
                 ## To save the combiner whenever we got a best checkpoint, I have to write some ugly code.
                 ## you can find the code inside `fairseq.checkpoint_utils.save_checkpoint` function.
                 ## In fact, knnbox shouldn't modify the fairseq code, but there is no better way
+                ## to save a single module instead of entire translation model.
             
     def forward(
         self,

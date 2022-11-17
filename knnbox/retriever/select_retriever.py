@@ -1,6 +1,7 @@
-from ..utils import retrieve_k_nearest
 import torch
 import torch.nn as nn
+
+from knnbox.retriever.utils import retrieve_k_nearest
 
 class SelectRetriever(nn.Module):
     def __init__(self, datastore, k, select_network, return_keys=False):
