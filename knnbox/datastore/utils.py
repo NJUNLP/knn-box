@@ -3,6 +3,7 @@ import os
 import faiss
 import numpy as np
 import time
+import ctypes
 
 def build_faiss_index(
                 keys,
@@ -25,18 +26,36 @@ def build_faiss_index(
     print("[Start Building Faiss Index]")
     res = faiss.StandardGpuResources()
     capacity, dimension = shape
-
     progress_idx = 1
     total_progress = 4 if use_pca is False else 5
 
+    # to speed up access to np.memmap
+    # madvise = ctypes.CDLL("libc.so.6").madvise
+    # madvise.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int]
+    # madvise.restype = ctypes.c_int
+    # assert madvise(keys.ctypes.data, keys.size * keys.dtype.itemsize, 1) == 0, \
+    #                                     "MADVISE FAILED" # 2 means MADV_SEQUENTIAL
+
     if not os.path.exists(output_filename+".trained"):
-        quantizer = faiss.IndexFlatL2(dimension)
-        index = faiss.IndexIVFPQ(quantizer, dimension, n_centroids, code_size, 8)
+        index_dim = pca_dim if use_pca else dimension
+        quantizer = faiss.IndexFlatL2(index_dim)
+        index = faiss.IndexIVFPQ(quantizer, index_dim, n_centroids, code_size, 8)
         index.nprobe = n_probe
 
-        if verbose:
-            print("  > [{}/{}] start put index to GPU...".format(progress_idx, total_progress))
-        start = time.time()
+        # if use PCA, wrap the index with pre-PCA operation
+        if use_pca == True:
+            print("  > [{}/{}] do pca operation".format(progress_idx, total_progress))
+            start = time.time()
+            
+            pca_matrix = faiss.PCAMatrix(dimension, pca_dim, 0, True)
+            index = faiss.IndexPreTransform(pca_matrix, index)
+            if verbose:
+                print("  > [{}/{}] pca operation took {} s".\
+                    format(progress_idx, total_progress, time.time()-start))
+                progress_idx += 1
+
+
+        start = time.time() 
         co = faiss.GpuClonerOptions()
         co.useFloat16 = True
         gpu_index = faiss.index_cpu_to_gpu(res, 0, index, co)
@@ -45,28 +64,15 @@ def build_faiss_index(
                 format(progress_idx, total_progress, time.time()-start))
             progress_idx += 1
 
-        # if use PCA, wrap the index with pre-PCA operation
-        if use_pca == True:
-            print("  > [{}/{}] do pca operation".format(progress_idx, total_progress))
-            start = time.time()
-            pca_matrix = faiss.PCAMatrix(dimension, pca_dim, 0, True)
-            index = faiss.IndexPreTransform(pca_matrix, index)
-            if verbose:
-                print("  > [{}/{}] pca operation took {} s".\
-                    format(progress_idx, total_progress, time.time()-start))
-                progress_idx += 1
-
         if verbose:
-            print("  > [{}/{}] training index (about 5 minutes)...".format(progress_idx, total_progress))
+            print("  > [{}/{}] training index (about 1 minutes)...".format(progress_idx, total_progress))
         start = time.time()
         np.random.seed(seed)
         random_sample = np.random.choice(
             np.arange(capacity), size = [min(train_index_count, capacity)],
             replace=False
         )
-        # if verbose:
-        #     print(random_sample[:10])
-        #     print(keys[random_sample][:10])
+
         # faiss dosent handle train keys in fp16, so convert to fp32 first
         gpu_index.train(keys[random_sample].astype(np.float32))
         if verbose:
@@ -100,6 +106,7 @@ def build_faiss_index(
                 print("  > [{}/{}] added {} tokens so far, total {}.".format(
                             progress_idx, total_progress,min(start, capacity), capacity))
             faiss.write_index(faiss.index_gpu_to_cpu(gpu_index), output_filename)
+            
     
     if verbose:
         start = time.time()
@@ -116,7 +123,7 @@ def build_faiss_index(
 
 
 def load_faiss_index(path, shape, n_probe,
-            move_to_gpu=False, verbose=False):
+            move_to_gpu=True, verbose=False):
     r"""
     load the faiss index"""
     print("[Start Loading Faiss Index]")

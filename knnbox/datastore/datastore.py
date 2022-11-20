@@ -43,7 +43,7 @@ class Datastore:
             ds["vals"].add(b)
         """
         if name not in self.datas:
-            # Create it if no exists
+            # Create if no exists
             self.datas[name] = Memmap(filename=os.path.join(self.path, name+".npy"), mode="w+")
         return self.datas[name]
 
@@ -57,7 +57,12 @@ class Datastore:
         """
         assert isinstance(data, Memmap), "__setitme__ is designed for set Memmap object"
         self.datas[name] = data
-        
+
+    def __delitem__(self, name):
+        r""" delete a inner data """
+        if name in self.datas:
+            del self.datas[name]
+    
 
     def set_pad_mask(self, mask):
         r""" 
@@ -147,7 +152,7 @@ class Datastore:
         # we open config file and get the shape
         config = read_config(self.path)
         
-        shape = tuple(config["data_infos"][filename]["shape"])
+        shape = config["data_infos"][filename]["faiss_index_shape"]
         if not hasattr(self, "faiss_index") or self.faiss_index is None:
             self.faiss_index = {}
         self.faiss_index[filename] = load_faiss_index(
@@ -182,5 +187,15 @@ class Datastore:
                     pca_dim=pca_dim,
                     verbose=verbose
                     )
+        
+        # wrtie the shape information to the config file
+        config = read_config(self.path)
+        if use_pca:
+            config["data_infos"][name]["faiss_index_shape"] = \
+                        list(self.datas[name].shape[:-1]) + [pca_dim]
+        else:
+            config["data_infos"][name]["faiss_index_shape"] = self.datas[name].shape
+        write_config(self.path, config)
+
 
  

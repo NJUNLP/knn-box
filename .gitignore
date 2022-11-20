@@ -1,4 +1,4 @@
 data-bin/*
 datastore/*
 pretrain-models/*
-save-models/
+save-models/*

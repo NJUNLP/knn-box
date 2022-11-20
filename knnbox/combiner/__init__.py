@@ -1,4 +1,5 @@
 from .combiner import Combiner
 from .adaptive_combiner import AdaptiveCombiner
 from .kernel_smoothed_combiner import KernelSmoothedCombiner
-# from .greedy_merge_combiner import Combiner, EfficientAdaptiveCombiner, EfficientKernelSmoothedCombiner
+from .cache_combiner import CacheCombiner
+from .merge_weight_combiner import MergeWeightCombiner

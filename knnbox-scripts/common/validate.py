@@ -172,12 +172,12 @@ def main(args, override_args=None):
     if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "kernel_smoothed_knn_mt", "vanilla_knn_mt_visual"]:
         datastore.dump()    # dump to disk
         datastore.build_faiss_index("keys")   # build faiss index
-    elif knn_type == "greedy_merge_knn_mt:":
+    elif knn_type == "greedy_merge_knn_mt":
         datastore.dump() # dump the un-pruned datastore to disk
-        datastore.build_faiss_index(use_pca=False) # build faiss index for un-pruned datastore
-        datastore.prune(merge_neighbors=args.merge_neighbors_n) # prune the datastore. search k neighbors when do greedy merge
+        datastore.build_faiss_index("keys", use_pca=True, pca_dim=args.pca_dim) # build faiss index with pre-PCA operation for pruned datastore
+        datastore.prune(merge_neighbors=args.merge_neighbors_n) # prune the datastore. search n neighbors when do greedy merge
         datastore.dump() # dump the pruned datastore to disk
-        datastore.build_faiss_index(use_pca=True, pca_dim=args.pca_dim) # build faiss index with pre-PCA operation
+        datastore.build_faiss_index("keys", use_pca=True, pca_dim=args.pca_dim) # build faiss index for un-pruned datastore
     ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end
 
 

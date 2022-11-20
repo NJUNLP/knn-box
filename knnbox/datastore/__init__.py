@@ -1,2 +1,2 @@
 from .datastore import Datastore
-from .greedymerge_datastore import GreedyMergeDatastore
+from .greedy_merge_datastore import GreedyMergeDatastore

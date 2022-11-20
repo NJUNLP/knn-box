@@ -49,7 +49,7 @@ def get_datastore_cfgs(datastore_path):
     return config
 
 
-@st.cache(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True, max_entries=5)
 def get_spatial_distribution(datastore_path, dictionary_path, sample_nums=30000, max_entries=10):
     r"""
     Return chart
@@ -133,7 +133,7 @@ def display_partial_records(frequency_records, ratio, display_sz=20):
 
 
 
-@st.cache(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True, max_entries=5)
 def get_value_frequency(datastore_path, dictionary_path):
     with open(os.path.join(datastore_path, "config.json")) as file:
         config = json.load(file)

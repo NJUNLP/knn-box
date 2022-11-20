@@ -75,14 +75,15 @@ class Memmap:
                 "You can't write to a Memmap with {} mode.".format(self.mode)
         # allocate the Memmap file on the first time add function is called 
         if self.data is None:
-            _shape = list(data.shape)
-            _shape[0] = 300000 # pre allocate [300000, ...] the first time
-            _shape = tuple(_shape)
+            preallocated_shape = list(data.shape) if data.shape else [1]
+
+            preallocated_shape[0] = 300000 # pre allocate [300000, ...] the first time
+            preallocated_shape = tuple(preallocated_shape)
             self.dtype = self.convert_data_type(data.dtype)
             self.data = np.memmap(
                 self.filename,
                 dtype = self.dtype,
-                shape = _shape,
+                shape = preallocated_shape,
                 mode = self.mode,
             )
         
@@ -97,7 +98,7 @@ class Memmap:
             "Inconsistent data dimension when add to memmap, require %s but add %s" % \
             (str(self.data.shape[1:]), str(data.shape[1:]))
 
-        data_shape = data.shape
+        data_shape = data.shape if data.shape else (1,)
         need_resize = False
         now_capacity = self.data.shape[0]
         new_capacity = now_capacity
@@ -157,7 +158,7 @@ class Memmap:
         """
         self.drop_redundant()
 
-
+        
     @staticmethod
     def convert_data_type(data_type):
         r""" convert an input data dtype to numpy compatible dtype """
@@ -198,9 +199,7 @@ class Memmap:
             str(torch.int): int,
             "int": int,
         }
-        if data_type not in data_type_convert_dict:
-            import pdb
-            pdb.set_trace()
+
         assert data_type in data_type_convert_dict, \
                 "Unsupported data type when convert dtype for memmap!" 
         return data_type_convert_dict[data_type] 

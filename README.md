@@ -7,6 +7,7 @@ In this toolkit, we provide reference implementations of various papers:
 * [ Nearest Neighbor Machine Translation (Khandelwal et al., 2021)](https://openreview.net/pdf?id=7wCBOfJ8hJM)
 * [ Adaptive Nearest Neighbor Machine Translation (Zheng et al., 2021)](https://aclanthology.org/2021.acl-short.47.pdf)
 * [ Learning Kernel-Smoothed Machine Translation with Retrieved Examples (Jiang et al., 2021)](https://aclanthology.org/2021.emnlp-main.579.pdf)
+* [ Efficient Machine Translation Domain Adaptation (PH Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
 
 
 ## Features:
@@ -16,9 +17,28 @@ In this toolkit, we provide reference implementations of various papers:
 
 ## Requirements and Installation
 * python >= 3.7
-* pytorch >= 1.5.0
-* 1.19.0 <= numpy < 1.20.0
-* faiss-gpu >= 1.6.5
+* pytorch >= 1.10.0
+* faiss-gpu >= 1.7.3
+<details>
+<summary><b><ins>Click here before installing faiss !!!</ins></b></summary>
+You should never install faiss with pip like this:
+
+```bash
+pip install faiss
+```
+the faiss library installed by pip will cause many problems.
+
+You should install faiss with conda:
+
+```bash
+CPU version only:
+conda install faiss-cpu -c pytorch
+
+GPU version:
+conda install faiss-gpu -c pytorch # For CUDA
+```
+</details>
+
 * sacremoses == 0.0.41
 * sacrebleu == 1.5.1
 * fastBPE == 0.1.0
@@ -98,6 +118,20 @@ bash train_kster.sh
 bash inference.sh
 ```
 </details>
+<details>
+<summary><b><ins>Run greedy merge knn-mt</ins></b></summary>
+implementation of [ Efficient Machine Translation Domain Adaptation (PH Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
+
+To translate using Greedy Merge knn-mt, execute the following command:
+
+```bash
+cd knnbox-scripts/greedy-merge-knn-mt
+# step 1. build datastore and prune using greedy merge method
+bash build_datastore_and_prune.sh
+# step 2. inferece (You can decide whether to use cache by --enable-cache)
+bash inference.sh
+```
+</details>
 
 ![](https://s1.ax1x.com/2022/07/30/vioW4K.png)
 
@@ -106,10 +140,8 @@ with knnbox, you can easily obtain a web page to visualize the kNN-MT translatio
 
 Install the requirements:
 * streamlit >= 1.13.0
-* pandas >= 1.3.5
 * matplotlib >= 3.5.3
 * seaborn >= 0.12.1
-* altair >= 4.2.0
 * scikit-learn >= 1.0.2
 
 and then execute the following command:
@@ -119,7 +151,7 @@ cd knnbox-scripts/vanilla-knn-mt-visual
 # (the visual datastore will save addtional information compared to noraml version datastore)
 bash build_datastore_visual.sh
 # step 2. Configure the information for the model you want to visualize
-vim model_configs.yml #Refer to the example configuration to modify.
+vim model_configs.yml #Refer to the example configuration to modify this file.
 # step 3. lanuch the web page
 bash start_app.sh
 ```

@@ -5,7 +5,7 @@
 !
 
 PROJECT_PATH=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
-DATA_PATH=$PROJECT_PATH/data-bin/medical
+DATA_PATH=$PROJECT_PATH/data-bin/koran
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
 
 CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/generate.py $DATA_PATH \
