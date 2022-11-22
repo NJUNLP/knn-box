@@ -23,7 +23,7 @@ st.set_page_config(
 # main function
 def knn_main():
     st.sidebar.image(get_icon(), use_column_width=True)
-    operation_type = st.sidebar.selectbox(" ", ("Translation", "Datastore Profiling"))
+    operation_type = st.sidebar.selectbox("op_type", ("Translation", "Datastore Profiling"), label_visibility="hidden")
 
 
     with st.sidebar:
@@ -102,15 +102,15 @@ def knn_main():
                 )
                 
                 k = st.number_input(
-                    "# K",
+                    label="K",
                     min_value=1,
                     max_value=64,
                     value=8,
                     help="set the K parameter of kNN-MT"
                 )
-                lambda_ = st.slider("# Lambda", min_value=0.00, max_value=1.00, value=0.7, 
+                lambda_ = st.slider(label="Lambda", min_value=0.00, max_value=1.00, value=0.7, 
                     help="set the Lambda parameter of kNN-MT")
-                temperature = st.slider("# Temperature", min_value=0.01, max_value=100.00, value=10.0, 
+                temperature = st.slider(label="Temperature", min_value=0.01, max_value=100.00, value=10.0, 
                     help="set the Temperature parameter of kNN-MT")
                 
             with c2:
