@@ -140,7 +140,7 @@ class Datastore:
         write_config(self.path, config)
 
 
-    def load_faiss_index(self, filename, move_to_gpu=True):
+    def load_faiss_index(self, filename, move_to_gpu=True, verbose=True):
         r"""
         load faiss index from disk
 
@@ -159,11 +159,12 @@ class Datastore:
                         path = index_path,
                         shape = shape,
                         n_probe = 32,
-                        move_to_gpu = move_to_gpu
+                        move_to_gpu = move_to_gpu,
+                        verbose=verbose
                         )
 
 
-    def build_faiss_index(self, name, verbose=True, use_pca=False, pca_dim=256):
+    def build_faiss_index(self, name, verbose=True, do_pca=False, pca_dim=256, use_gpu=True):
         r"""
         build faiss index for a data.
         the output file named name+.faiss_index
@@ -171,7 +172,7 @@ class Datastore:
         Args:
             name: The data name which need to build faiss index
             verbose: display detailed message
-            use_pca: wether do a PCA when building faiss index
+            do_pca: wether do a PCA when building faiss index
             pca_dim: if use PCA, the PCA output dim
         """
 
@@ -183,14 +184,15 @@ class Datastore:
                     self.datas[name].data, 
                     self.datas[name].shape,
                     os.path.join(self.path, name+".faiss_index"),
-                    use_pca=use_pca,
+                    do_pca=do_pca,
                     pca_dim=pca_dim,
+                    use_gpu=use_gpu,
                     verbose=verbose
                     )
         
         # wrtie the shape information to the config file
         config = read_config(self.path)
-        if use_pca:
+        if do_pca:
             config["data_infos"][name]["faiss_index_shape"] = \
                         list(self.datas[name].shape[:-1]) + [pca_dim]
         else:

@@ -153,7 +153,7 @@ vim model_configs.yml
 bash start_app.sh
 ```
 
-<img src="https://s1.ax1x.com/2022/11/22/z39PDH.png" width="49%" height="105"><img src="https://s1.ax1x.com/2022/11/22/z39ibd.png" width="50%" height="105">
+<img src="https://s1.ax1x.com/2022/11/22/z39PDH.png" width="49%" height="130"><img src="https://s1.ax1x.com/2022/11/22/z39ibd.png" width="50%" height="130">
 
 
 ## Contributor

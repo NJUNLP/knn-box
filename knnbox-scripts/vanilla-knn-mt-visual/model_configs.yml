@@ -8,6 +8,7 @@ DE-EN[it]:
   knn_mode: inference
   knn_datastore_path: /data1/zhaoqf/0101/knn-box/datastore/vanilla-visual/it
   user_dir: /data1/zhaoqf/0101/knn-box/knnbox/models
+  bpe: fastbpe
   bpe_codes: /data1/zhaoqf/0101/knn-box/pretrain-models/wmt19.de-en/ende30k.fastbpe.code
   beam: "4"
   lenpen: "0.6"
@@ -25,6 +26,7 @@ ZH-EN[laws]:
   knn_mode: inference
   knn_datastore_path: /data1/zhaoqf/0101/knn-box/datastore/vanilla-visual/zh-en-laws
   user_dir: /data1/zhaoqf/0101/knn-box/knnbox/models
+  bpe: fastbpe
   bpe_codes: /data1/zhaoqf/0101/knn-box/pretrain-models/zh-en/codes.zh
   beam: "4"
   lenpen: "0.6"

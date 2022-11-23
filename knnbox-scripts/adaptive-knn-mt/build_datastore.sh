@@ -8,11 +8,13 @@ so you can choose to directly use the obtained vanilla knn-mt's datastore withou
 
 note 2. The --arch can also be "vanilla_knn_mt@xxxx", but for uniformity we use "adaptive_knn_mt@xxxx" here.
 !
+# this line speed up faiss
+export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
 DATA_PATH=$PROJECT_PATH/data-bin/medical
-
+DATASTORE_SAVE_PATH=$PROJECT_PATH/datastore/vanilla/medical
 
 CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/validate.py $DATA_PATH \
 --task translation \
@@ -26,4 +28,4 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/validate.py $D
 --user-dir $PROJECT_PATH/knnbox/models \
 --arch adaptive_knn_mt@transformer_wmt19_de_en \
 --knn-mode build_datastore \
---knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \
+--knn-datastore-path  $DATASTORE_SAVE_PATH \

@@ -281,6 +281,7 @@ def get_knn_model_resource(
     knn_mode,
     knn_datastore_path,
     user_dir,
+    bpe,
     bpe_codes,
     beam,
     lenpen,
@@ -313,8 +314,8 @@ def get_knn_model_resource(
         "--scoring", scoring,
         "--tokenizer", tokenizer,
         "--task", "translation",
+        "--bpe", bpe,
         "--bpe-codes", bpe_codes,
-        "--bpe", "fastbpe",
         "--nbest", "1",
         "--remove-bpe",
     ]

@@ -96,7 +96,7 @@ class GreedyMergeDatastore(Datastore):
             merge_neighbors: merge how many neighbors
         """ 
         if not hasattr(self, "faiss_index") or self.faiss_index is None:
-            self.load_faiss_index("keys")
+            self.load_faiss_index("keys", verbose=False)
              
         # drop redundant space first
         self["keys"].drop_redundant()
@@ -122,7 +122,9 @@ class GreedyMergeDatastore(Datastore):
                 cnt = 0
                 batches = []
                 offset += knns.shape[0]
-    
+
+        # release memory
+        del self.faiss_index["keys"] 
         if verbose:
             print(f"  > collect neighbors took {time.time()- start_time} seconds.")
         

@@ -15,8 +15,9 @@ def build_faiss_index(
                 n_probe = 32,
                 num_keys_to_add_at_a_time = 500000,
                 seed = 1,
-                use_pca = False,
-                pca_dim = 256, # if use_pca==True, reduce to pca_dim before faiss retrieve
+                do_pca = False,
+                pca_dim = 256, # if do_pca==True, reduce to pca_dim before faiss retrieve
+                use_gpu = True, # use faiss-gpu, othewise use faiss-cpu
                 verbose=False
                 ):
     r""" 
@@ -24,26 +25,27 @@ def build_faiss_index(
     this function is mostly inspired from kNN-LM code 
     """
     print("[Start Building Faiss Index]")
+    # set OMP_WAIT_POLICY=PASSIVE significantly speed up faiss-cpu
+    os.environ["OMP_WAIT_POLICY"]="PASSIVE"
+
     res = faiss.StandardGpuResources()
     capacity, dimension = shape
     progress_idx = 1
-    total_progress = 4 if use_pca is False else 5
+    total_progress = 3
+    if do_pca:
+        total_progress += 1
+    if use_gpu:
+        total_progress += 1
 
-    # to speed up access to np.memmap
-    # madvise = ctypes.CDLL("libc.so.6").madvise
-    # madvise.argtypes = [ctypes.c_void_p, ctypes.c_size_t, ctypes.c_int]
-    # madvise.restype = ctypes.c_int
-    # assert madvise(keys.ctypes.data, keys.size * keys.dtype.itemsize, 1) == 0, \
-    #                                     "MADVISE FAILED" # 2 means MADV_SEQUENTIAL
 
     if not os.path.exists(output_filename+".trained"):
-        index_dim = pca_dim if use_pca else dimension
+        index_dim = pca_dim if do_pca else dimension
         quantizer = faiss.IndexFlatL2(index_dim)
         index = faiss.IndexIVFPQ(quantizer, index_dim, n_centroids, code_size, 8)
         index.nprobe = n_probe
 
         # if use PCA, wrap the index with pre-PCA operation
-        if use_pca == True:
+        if do_pca == True:
             print("  > [{}/{}] do pca operation".format(progress_idx, total_progress))
             start = time.time()
             
@@ -54,18 +56,18 @@ def build_faiss_index(
                     format(progress_idx, total_progress, time.time()-start))
                 progress_idx += 1
 
+        if use_gpu:
+            start = time.time() 
+            co = faiss.GpuClonerOptions()
+            co.useFloat16 = True
+            gpu_index = faiss.index_cpu_to_gpu(res, 0, index, co)
+            if verbose:
+                print("  > [{}/{}] put index to GPU took {} s". \
+                    format(progress_idx, total_progress, time.time()-start))
+                progress_idx += 1
 
-        start = time.time() 
-        co = faiss.GpuClonerOptions()
-        co.useFloat16 = True
-        gpu_index = faiss.index_cpu_to_gpu(res, 0, index, co)
         if verbose:
-            print("  > [{}/{}] put index to GPU took {} s". \
-                format(progress_idx, total_progress, time.time()-start))
-            progress_idx += 1
-
-        if verbose:
-            print("  > [{}/{}] training index (about 1 minutes)...".format(progress_idx, total_progress))
+            print("  > [{}/{}] training index (about 3 minutes)...".format(progress_idx, total_progress))
         start = time.time()
         np.random.seed(seed)
         random_sample = np.random.choice(
@@ -74,13 +76,20 @@ def build_faiss_index(
         )
 
         # faiss dosent handle train keys in fp16, so convert to fp32 first
-        gpu_index.train(keys[random_sample].astype(np.float32))
+        if use_gpu:
+            gpu_index.train(keys[random_sample].astype(np.float32))
+        else:
+            index.train(keys[random_sample].astype(np.float32))
+        
         if verbose:
             print("  > [{}/{}] training took {} s".format(progress_idx, total_progress, time.time() - start))
             progress_idx += 1
             print("  > [{}/{}] writing index after training...".format(progress_idx, total_progress))
         start = time.time()
-        faiss.write_index(faiss.index_gpu_to_cpu(gpu_index), output_filename+".trained")
+        if use_gpu:
+            faiss.write_index(faiss.index_gpu_to_cpu(gpu_index), output_filename+".trained")
+        else:
+            faiss.write(index, output_filename+".trained")
         if verbose:
             print("  > [{}/{}] writing index took {} s".format(progress_idx, total_progress, time.time() -start))
             progress_idx += 1
@@ -89,32 +98,44 @@ def build_faiss_index(
         print("  > [{}/{}] adding keys...".format(progress_idx, total_progress))
     # read the trained model
     index = faiss.read_index(output_filename + ".trained")
-    co = faiss.GpuClonerOptions()
-    co.useFloat16 = True
-    gpu_index = faiss.index_cpu_to_gpu(res, 0, index, co)
+    if use_gpu:
+        co = faiss.GpuClonerOptions()
+        co.useFloat16 = True
+        gpu_index = faiss.index_cpu_to_gpu(res, 0, index, co)
     start = 0
     start_time = time.time()
 
     while start < capacity:
         end = min(capacity, start+num_keys_to_add_at_a_time)
         to_add = keys[start:end].copy()
-        gpu_index.add_with_ids(to_add.astype(np.float32), np.arange(start,end))
+        if use_gpu:
+            gpu_index.add_with_ids(to_add.astype(np.float32), np.arange(start,end))
+        else:
+            index.add_with_ids(to_add.astype(np.float32), np.arange(start,end))
         start += num_keys_to_add_at_a_time
 
         if (start % 1000000) == 0:
             if verbose:
                 print("  > [{}/{}] added {} tokens so far, total {}.".format(
                             progress_idx, total_progress,min(start, capacity), capacity))
-            faiss.write_index(faiss.index_gpu_to_cpu(gpu_index), output_filename)
+            # faiss.write_index(faiss.index_gpu_to_cpu(gpu_index), output_filename)
             
     
     if verbose:
         start = time.time()
-        faiss.write_index(faiss.index_gpu_to_cpu(gpu_index), output_filename)
         if verbose:
             print("  > [{}/{}] adding total {} keys ".format(progress_idx, total_progress, end))
             print("  > [{}/{}] adding took {} s".format(progress_idx, total_progress, time.time() - start_time))
+    if use_gpu:
+        faiss.write_index(faiss.index_gpu_to_cpu(gpu_index), output_filename)
+    else:
+        faiss.write_index(index, output_filename)
 
+    index.reset()
+    del index
+    if use_gpu:
+        gpu_index.reset()
+        del gpu_index
     # remove the temporary trained index
     if os.path.exists(output_filename+".trained"):
         os.remove(output_filename+".trained")

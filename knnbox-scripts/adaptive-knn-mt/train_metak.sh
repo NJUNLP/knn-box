@@ -6,12 +6,14 @@
 note 1. You can adjust --batch-size and --update-freq based on your GPU memory.
 original paper recommand that batch-size*update-freq equals 32.
 !
+# this line speed up faiss
+export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
 DATA_PATH=$PROJECT_PATH/data-bin/medical
 SAVE_DIR=$PROJECT_PATH/save-models/combiner/adaptive/medical
-
+DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/medical
 
 # using paper's settings
 CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
@@ -33,7 +35,7 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --user-dir $PROJECT_PATH/knnbox/models \
 --arch "adaptive_knn_mt@transformer_wmt19_de_en" \
 --knn-mode "train_metak" \
---knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \
+--knn-datastore-path $DATASTORE_LOAD_PATH \
 --knn-max-k 16 \
 --knn-combiner-path $SAVE_DIR \
 

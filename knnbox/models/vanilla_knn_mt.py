@@ -38,6 +38,8 @@ class VanillaKNNMT(TransformerModel):
                             help="The hyper-parameter lambda of vanilla knn-mt")
         parser.add_argument("--knn-temperature", type=float, metavar="D", default=10,
                             help="The hyper-parameter temperature of vanilla knn-mt")
+        parser.add_argument("--build-faiss-index-with-cpu", action="store_true", default=False,
+                            help="use faiss-cpu instead of faiss-gpu (useful when gpu memory is small)")
     
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):

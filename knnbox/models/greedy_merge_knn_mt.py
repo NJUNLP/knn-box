@@ -33,15 +33,19 @@ class GreedyMergeKNNMT(VanillaKNNMT):
         add greedy merge knn-mt related args here
         """
         VanillaKNNMT.add_args(parser)
+        parser.add_argument("--do-pca", action="store_true", default=False,
+                            help="whether to do pca operatiion for datastore")
         parser.add_argument("--pca-dim", type=int, metavar="N", default=256,
                             help="The expected target dimension of PCA")
+        parser.add_argument("--do-merge", action="store_true", default=False,
+                            help="whether to use greedy merge to prune the datastore")
         parser.add_argument("--merge-neighbors-n", type=int, metavar="N", default=2,
                             help="merge how many neighbors when trim the datastore")
         parser.add_argument("--enable-cache", action="store_true", default=False,
-                            help="whether to use a retriever cache.")
+                            help="whether to use a retriever cache when inference.")
         parser.add_argument("--use-merge-weights", action="store_true", default=False,
                             help="whether to use merge weights when calclulate knn probs") 
-    
+        
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):
         r"""

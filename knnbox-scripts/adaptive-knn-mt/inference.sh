@@ -3,10 +3,13 @@
 [dataset]: multi domain DE-EN dataset
 [base model]: WMT19 DE-ENscript
 !
+# this line speed up faiss
+export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
 DATA_PATH=$PROJECT_PATH/data-bin/medical
+DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/medical
 COMBINER_LOAD_DIR=$PROJECT_PATH/save-models/combiner/adaptive/medical
 
 
@@ -23,6 +26,6 @@ CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/knnbox-scripts/common/generate.py $D
 --arch adaptive_knn_mt@transformer_wmt19_de_en \
 --user-dir $PROJECT_PATH/knnbox/models \
 --knn-mode inference \
---knn-datastore-path $PROJECT_PATH/datastore/vanilla/medical \
+--knn-datastore-path  $DATASTORE_LOAD_PATH \
 --knn-max-k 16 \
 --knn-combiner-path $COMBINER_LOAD_DIR \

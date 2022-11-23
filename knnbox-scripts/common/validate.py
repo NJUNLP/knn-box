@@ -169,15 +169,21 @@ def main(args, override_args=None):
     
 
     ## knnbox related code start >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+    # release memory to make sure we have enough gpu memory to build faiss index
+    del model, task, progress, criterion, dataset
+    if use_cuda:
+        torch.cuda.empty_cache()    # release gpu memory
+
     if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "kernel_smoothed_knn_mt", "vanilla_knn_mt_visual"]:
         datastore.dump()    # dump to disk
-        datastore.build_faiss_index("keys")   # build faiss index
+        datastore.build_faiss_index("keys", use_gpu=(not args.build_faiss_index_with_cpu))   # build faiss index
     elif knn_type == "greedy_merge_knn_mt":
         datastore.dump() # dump the un-pruned datastore to disk
-        datastore.build_faiss_index("keys", use_pca=True, pca_dim=args.pca_dim) # build faiss index with pre-PCA operation for pruned datastore
-        datastore.prune(merge_neighbors=args.merge_neighbors_n) # prune the datastore. search n neighbors when do greedy merge
-        datastore.dump() # dump the pruned datastore to disk
-        datastore.build_faiss_index("keys", use_pca=True, pca_dim=args.pca_dim) # build faiss index for un-pruned datastore
+        datastore.build_faiss_index("keys", do_pca=args.do_pca, pca_dim=args.pca_dim, use_gpu=(not args.build_faiss_index_with_cpu)) # build faiss index with pre-PCA operation for pruned datastore
+        if args.do_merge:
+            datastore.prune(merge_neighbors=args.merge_neighbors_n) # prune the datastore. search n neighbors when do greedy merge
+            datastore.dump() # dump the pruned datastore to disk
+            datastore.build_faiss_index("keys", do_pca=args.do_pca, pca_dim=args.pca_dim, use_gpu=(not args.build_faiss_index_with_cpu)) # build faiss index for un-pruned datastore
     ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end
 
 
