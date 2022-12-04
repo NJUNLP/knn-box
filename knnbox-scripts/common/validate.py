@@ -19,7 +19,7 @@ from fairseq import checkpoint_utils, distributed_utils, options, utils
 from fairseq.logging import metrics, progress_bar
 
 ## knnbox related code start >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-from knnbox.datastore import Datastore, GreedyMergeDatastore
+from knnbox.datastore import Datastore, GreedyMergeDatastore, PckDatastore
 from knnbox.common_utils import filter_pad_tokens, global_vars
 import numpy as np
 ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end
@@ -85,6 +85,13 @@ def main(args, override_args=None):
             global_vars()["datastore"] = Datastore(path=args.knn_datastore_path)
         if knn_type == "greedy_merge_knn_mt":
             global_vars()["datastore"] = GreedyMergeDatastore(path=args.knn_datastore_path)
+        if knn_type == "pck_knn_mt":
+            global_vars()["datastore"] = PckDatastore(
+                path=args.knn_datastore_path,
+                reduction_network_input_dim=args.decoder_embed_dim,
+                reduction_network_output_dim=args.knn_reduct_dim,
+                dictionary_len=len(task.tgt_dict),
+                )
     datastore = global_vars()["datastore"]
     ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end
 
@@ -129,6 +136,12 @@ def main(args, override_args=None):
                 non_pad_tokens, mask = filter_pad_tokens(sample["target"])
                 datastore["vals"].add(non_pad_tokens)
                 datastore.set_pad_mask(mask)
+            
+            elif knn_type == "pck_knn_mt":
+                non_pad_tokens, mask = filter_pad_tokens(sample["target"])
+                datastore["vals"].add(non_pad_tokens)
+                datastore.set_pad_mask(mask)
+                datastore.set_target(sample["target"])
 
             elif knn_type == "vanilla_knn_mt_visual":
                 non_pad_tokens, mask = filter_pad_tokens(sample["target"])
@@ -184,6 +197,10 @@ def main(args, override_args=None):
             datastore.prune(merge_neighbors=args.merge_neighbors_n) # prune the datastore. search n neighbors when do greedy merge
             datastore.dump() # dump the pruned datastore to disk
             datastore.build_faiss_index("keys", do_pca=args.do_pca, pca_dim=args.pca_dim, use_gpu=(not args.build_faiss_index_with_cpu)) # build faiss index for un-pruned datastore
+
+    elif knn_type == "pck_knn_mt":
+        datastore.dump() # dump the un-pruned datastore to disk
+
     ## <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< end
 
 

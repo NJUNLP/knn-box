@@ -8,17 +8,17 @@ export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/medical
-DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/medical
+DATA_PATH=$PROJECT_PATH/data-bin/it
+DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/it
 
 
-CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
 --dataset-impl mmap \
 --beam 4 --lenpen 0.6 --max-len-a 1.2 --max-len-b 10 --source-lang de --target-lang en \
 --gen-subset test \
---max-tokens 4096 \
+--max-tokens 2048 \
 --scoring sacrebleu \
 --tokenizer moses \
 --remove-bpe \

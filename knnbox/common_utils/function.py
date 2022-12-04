@@ -69,7 +69,6 @@ def select_keys_with_pad_mask(keys, mask):
     return keys.masked_select(mask).view(-1, keys.size(-1))
 
 
-
 def disable_model_grad(model):
     r""" disable whole model's gradient """
     for name, param in model.named_parameters():
@@ -100,4 +99,4 @@ def label_smoothed_nll_loss(lprobs, target, epsilon=2e-3, ignore_index=None, red
     eps_i = epsilon / lprobs.size(-1)
     
     loss = (1.0 - epsilon) * nll_loss + eps_i * smooth_loss
-    return loss, 
+    return loss 

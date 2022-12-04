@@ -1,17 +1,17 @@
 :<<!
-[script description]: use kernel smoothed knn-mt to translate 
+[script description]: use pck-mt datastore and adaptive combiner to translate 
 [dataset]: multi domain DE-EN dataset
-[base model]: WMT19 DE-EN
+[base model]: WMT19 DE-ENscript
 !
 # this line speed up faiss
 export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/medical
-DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/medical
-COMBINER_LOAD_DIR=$PROJECT_PATH/save-models/combiner/kernel_smooth/medical
-
+DATA_PATH=$PROJECT_PATH/data-bin/koran
+DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/pck/koran
+COMBINER_LOAD_DIR=$PROJECT_PATH/save-models/combiner/pck/koran
+MAX_K=16
 
 CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
 --task translation \
@@ -23,9 +23,10 @@ CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $D
 --max-tokens 2048 \
 --scoring sacrebleu \
 --tokenizer moses --remove-bpe \
---arch kernel_smoothed_knn_mt@transformer_wmt19_de_en \
+--arch pck_knn_mt@transformer_wmt19_de_en \
 --user-dir $PROJECT_PATH/knnbox/models \
 --knn-mode inference \
---knn-datastore-path $DATASTORE_LOAD_PATH \
---knn-k 16 \
+--knn-datastore-path  $DATASTORE_LOAD_PATH \
+--knn-max-k $MAX_K \
 --knn-combiner-path $COMBINER_LOAD_DIR \
+

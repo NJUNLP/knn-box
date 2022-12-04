@@ -8,6 +8,10 @@ kNN-box is an open-source toolkit to build kNN-MT models. We take inspiration fr
   - [Requirements and Installation](#requirements-and-installation)
   - [Overview](#overview)
   - [Visualization](#visualization)
+  - [Benchmark](#benchmark)
+    - [Dataset and Base Model](#dataset-and-base-model)
+    - [Datastore Size](#datastore-size)
+    - [BLEU Score](#bleu-score)
   - [Contributor](#contributor)
 
 ## Features
@@ -23,6 +27,9 @@ kNN-box is an open-source toolkit to build kNN-MT models. We take inspiration fr
 * sacremoses == 0.0.41
 * sacrebleu == 1.5.1
 * fastBPE == 0.1.0
+* streamlit >= 1.13.0
+* scikit-learn >= 1.0.2
+* seaborn >= 0.12.1
 
 You can install this toolkit by
 ```shell
@@ -54,6 +61,7 @@ Users can easily develope different kNN-MT models by customizing three modules. 
 * [ Adaptive Nearest Neighbor Machine Translation (Zheng et al., 2021)](https://aclanthology.org/2021.acl-short.47.pdf)
 * [ Learning Kernel-Smoothed Machine Translation with Retrieved Examples (Jiang et al., 2021)](https://aclanthology.org/2021.emnlp-main.579.pdf)
 * [ Efficient Machine Translation Domain Adaptation (PH Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
+* [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., 2022)](https://aclanthology.org/2022.acl-long.154.pdf)
 
 <details>
 <summary><b><ins>Preparation: download pretrained models and dataset</ins></b></summary>
@@ -135,6 +143,27 @@ bash inference.sh
 ```
 </details>
 
+</details>
+<details>
+<summary><b><ins>Run pck knn-mt</ins></b></summary>
+
+implementation of [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., 2022)](https://aclanthology.org/2022.acl-long.154.pdf)
+
+To translate using pck knn-mt, execute the following command:
+
+```bash
+cd knnbox-scripts/pck-knn-mt
+# step 1. build datastore 
+bash build_datastore.sh
+# step 2. prune datastore (size and dimension)
+bash prune_datastore.sh
+# step 3. train meta-k network
+bash train_metak.sh
+# step 4. inference
+bash inference.sh
+```
+</details>
+
 <img src="https://s1.ax1x.com/2022/11/22/z3Cpiq.png" width="80%" alt="design">
 
 
@@ -153,7 +182,84 @@ vim model_configs.yml
 bash start_app.sh
 ```
 
-<img src="https://s1.ax1x.com/2022/11/22/z39PDH.png" width="49%" height="130"><img src="https://s1.ax1x.com/2022/11/22/z39ibd.png" width="50%" height="130">
+![](https://s1.ax1x.com/2022/11/25/zY3djf.png)
+
+## Benchmark
+
+Here are the results obtained by using the knnbox toolkit to reproduce popular papers.
+
+### Dataset and Base Model
+
+we use the script mentioned above to download preprocessed OPUS multi-domain De-En dataset
+and pretrained WMT19 De-En winner model. If you are interested in the general domain dataset for training pretrained models, download it from [here](https://www.statmt.org/wmt19/translation-task.html).
+
+### Datastore Size
+
+<table>
+  <tr>
+    <th align="center">Domain</th>
+    <td align="center">IT</td>
+    <td align="center">Medical</td>
+    <td align="center">Koran</td>
+    <td align="center">Law</td>
+  </tr>
+  <tr>
+    <th align="center">Size</th>
+    <td align="center">3602862</td>
+    <td align="center">6903141</td>
+    <td align="center">524374</td>
+    <td align="center">19061382</td>
+  </tr>
+</table>
+
+### BLEU Score
+
+|model \ domain|IT|Medical|Koran|Law|General Domain (Avg)|
+|:--:|:--:|:--:|:--:|:--:|:--:|
+|Base NMT|38.35|40.06|16.26|45.48|37.16|
+|vanilla kNN-MT|45.88|54.13|20.51|61.09|11.98|
+|adaptive kNN-MT|47.41|56.15|20.20|63.01|32.70|
+|kernel smoothed kNN-MT|47.81|56.67|20.16|63.27|32.60|
+
+> Note that due to the unavoidable randomness in constructing the faiss index, there will be slight differences between our results and the paper's, and our results will not be exactly the same as yours.
+
+- hyper-parameter of vanilla kNN-MT
+
+  we follow the configure of [adaptive kNN-MT](https://github.com/zhengxxn/adaptive-knn-mt)
+
+  |domain|IT|Medical|Koran|Law|
+  |:--:|:--:|:--:|:--:|:--:|
+  |K|8|4|16|4|
+  |Temperature|10|10|100|10|
+  |Lambda|0.7|0.8|0.8|0.8|
+
+- hyper-parameter of adaptive kNN-MT
+
+  we choose the max-k which obtained highest BLEU for every domain in 
+  [adaptive kNN-MT](https://github.com/zhengxxn/adaptive-knn-mt)
+
+  <table>
+    <tr>
+      <th align="center">Domain</th>
+      <td align="center">IT</td>
+      <td align="center">Medical</td>
+      <td align="center">Koran</td>
+      <td align="center">Law</td>
+    </tr>
+    <tr>
+      <th align="center">max-k</th>
+      <td align="center">8</td>
+      <td align="center">16</td>
+      <td align="center">16</td>
+      <td align="center">8</td>
+    </tr>
+  </table>
+
+  although `temperature` is trainable, we follow the paper and fix `temperature` to 10.  
+
+- hyper-parameter of kernel smoothed kNN-MT
+
+  for all domains, we use fixed `k` 16.
 
 
 ## Contributor

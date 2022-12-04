@@ -13,6 +13,7 @@ DE-EN[it]:
   beam: "4"
   lenpen: "0.6"
   max_len_a: "1.2"
+  max_len_b: "10"
   source_lang: de
   target_lang: en
   max_tokens: "1024"
@@ -31,6 +32,7 @@ ZH-EN[laws]:
   beam: "4"
   lenpen: "0.6"
   max_len_a: "1.2"
+  max_len_b: "10"
   source_lang: zh
   target_lang: en
   max_tokens: "1024"

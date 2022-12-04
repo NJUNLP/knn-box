@@ -49,6 +49,18 @@ class AdaptiveKNNMT(TransformerModel):
                             help="the directory of save or load datastore")
         parser.add_argument("--knn-max-k", type=int, metavar="N", default=8,
                             help="The hyper-parameter max k of adaptive knn-mt")
+        parser.add_argument("--knn-k-type", choices=["fixed", "trainable"], default="trainable",
+                            help="trainable k or fixed k, if choose `fixed`, we use all the"
+                            "entries returned by retriever to calculate knn probs, "
+                            "i.e. directly use --knn-max-k as k")
+        parser.add_argument("--knn-lambda-type", choices=["fixed", "trainable"], default="trainable",
+                            help="trainable lambda or fixed lambda")
+        parser.add_argument("--knn-lambda", type=float, default=0.7,
+                            help="if use a fixed lambda, provide it with --knn-lambda")
+        parser.add_argument("--knn-temperature-type", choices=["fixed", "trainable"], default="trainable",
+                            help="trainable temperature or fixed temperature")
+        parser.add_argument("--knn-temperature", type=float, default=10,
+                            help="if use a fixed temperature, provide it with --knn-temperature")
         parser.add_argument("--knn-combiner-path", type=str, metavar="STR", default="/home/",
                             help="The directory to save/load adaptiveCombiner")
         parser.add_argument("--build-faiss-index-with-cpu", action="store_true", default=False,
@@ -92,7 +104,10 @@ class AdaptiveKNNMTDecoder(TransformerDecoder):
             self.retriever = Retriever(datastore=self.datastore, k=args.knn_max_k)
             if args.knn_mode == "train_metak":
                 self.combiner = AdaptiveCombiner(max_k=args.knn_max_k, probability_dim=len(dictionary),
-                            k_trainable=True, lambda_trainable=True, temperature_trainable=False, temperature=10.)
+                            k_trainable=(args.knn_k_type=="trainable"),
+                            lambda_trainable=(args.knn_lambda_type=="trainable"), lamda_=args.knn_lambda,
+                            temperature_trainable=(args.knn_temperature_type=="trainable"), temperature=args.knn_temperature
+                )
             elif args.knn_mode == "inference":
                 self.combiner = AdaptiveCombiner.load(args.knn_combiner_path)
 

@@ -3,8 +3,8 @@
 [dataset]: multi domain DE-EN dataset
 [base model]: WMT19 DE-ENscript
 
-note 1. original paper update 30k steps, but for time saving we update 2k steps here,
-the result of 2k version is good enough.
+note 1. original paper update 30k steps, but for time saving we update 5k steps here,
+the result of 5k version is good enough.
 
 note 2. You can adjust --max-tokens and --update-freq based on your GPU memory.
 original paper recommand that max-tokens*update-freq equals 36864.
@@ -22,7 +22,7 @@ SAVE_DIR=$PROJECT_PATH/save-models/combiner/kernel_smooth/medical
 CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/train.py $DATA_PATH \
 --task translation \
 --train-subset train --valid-subset valid \
---best-checkpoint-metric "loss" --patience 30 --max-epoch 500 --max-update 2000 \
+--best-checkpoint-metric "loss" --patience 30 --max-epoch 500 --max-update 5000 \
 --finetune-from-model $BASE_MODEL \
 --optimizer adam --adam-betas '(0.9, 0.98)' --clip-norm 1.0 \
 --lr 2e-4 --lr-scheduler inverse_sqrt --warmup-updates 200 \

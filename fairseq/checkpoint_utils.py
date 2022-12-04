@@ -280,6 +280,9 @@ def load_model_ensemble_and_task(
     assert not (
         strict and num_shards > 1
     ), "Cannot load state dict with strict=True and checkpoint shards > 1"
+    # add by knn-box, set-strict=False
+    strict = False
+    
     ensemble = []
     for filename in filenames:
         orig_filename = filename

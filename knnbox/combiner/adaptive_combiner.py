@@ -29,9 +29,7 @@ class AdaptiveCombiner(nn.Module):
         self.kwargs = kwargs 
         self.mask_for_distance = None
 
-        # check
-        assert self.k_trainable or "k" in kwargs, \
-            "if k is not trainable, you should provide a fixed k value"
+        # check 
         assert self.lambda_trainable or "lambda_" in kwargs, \
             "if lambda is not trainable, you should provide a fixed lambda_ value"
         assert self.temperature_trainable or "temperature" in kwargs, \

@@ -1,5 +1,5 @@
 :<<!
-[script description]: train adptive-knn-mt's meta-k network
+[script description]: train meta-k network
 [dataset]: multi domain DE-EN dataset
 [base model]: WMT19 DE-ENscript
 
@@ -11,13 +11,13 @@ export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/it
-SAVE_DIR=$PROJECT_PATH/save-models/combiner/adaptive/it
-DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/it
-MAX_K=8
+DATA_PATH=$PROJECT_PATH/data-bin/koran
+SAVE_DIR=$PROJECT_PATH/save-models/combiner/pck/koran
+DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/pck/koran
+MAX_K=16
 
 # using paper's settings
-CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --task translation \
 --train-subset valid --valid-subset valid \
 --best-checkpoint-metric "loss" \
@@ -34,7 +34,7 @@ CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --batch-size 4 \
 --update-freq 8 \
 --user-dir $PROJECT_PATH/knnbox/models \
---arch "adaptive_knn_mt@transformer_wmt19_de_en" \
+--arch "pck_knn_mt@transformer_wmt19_de_en" \
 --knn-mode "train_metak" \
 --knn-datastore-path $DATASTORE_LOAD_PATH \
 --knn-max-k $MAX_K \
@@ -42,4 +42,3 @@ CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --knn-lambda-type trainable \
 --knn-temperature-type fixed --knn-temperature 10.0 \
 --knn-combiner-path $SAVE_DIR \
-

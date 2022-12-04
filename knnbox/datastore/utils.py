@@ -44,17 +44,6 @@ def build_faiss_index(
         index = faiss.IndexIVFPQ(quantizer, index_dim, n_centroids, code_size, 8)
         index.nprobe = n_probe
 
-        # if use PCA, wrap the index with pre-PCA operation
-        if do_pca == True:
-            print("  > [{}/{}] do pca operation".format(progress_idx, total_progress))
-            start = time.time()
-            
-            pca_matrix = faiss.PCAMatrix(dimension, pca_dim, 0, True)
-            index = faiss.IndexPreTransform(pca_matrix, index)
-            if verbose:
-                print("  > [{}/{}] pca operation took {} s".\
-                    format(progress_idx, total_progress, time.time()-start))
-                progress_idx += 1
 
         if use_gpu:
             start = time.time() 
@@ -66,6 +55,20 @@ def build_faiss_index(
                     format(progress_idx, total_progress, time.time()-start))
                 progress_idx += 1
 
+        # if use PCA, wrap the index with pre-PCA operation
+        if do_pca == True:
+            print("  > [{}/{}] do pca operation".format(progress_idx, total_progress))
+            start = time.time()
+            pca_matrix = faiss.PCAMatrix(dimension, pca_dim, 0, True)
+            if not use_gpu:
+                index = faiss.IndexPreTransform(pca_matrix, index)
+            else:
+                gpu_index = faiss.IndexPreTransform(pca_matrix, gpu_index)
+            if verbose:
+                print("  > [{}/{}] pca operation took {} s".\
+                    format(progress_idx, total_progress, time.time()-start))
+                progress_idx += 1
+        
         if verbose:
             print("  > [{}/{}] training index (about 3 minutes)...".format(progress_idx, total_progress))
         start = time.time()

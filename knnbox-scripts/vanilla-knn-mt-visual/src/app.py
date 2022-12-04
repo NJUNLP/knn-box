@@ -23,7 +23,7 @@ st.set_page_config(
 # main function
 def knn_main():
     st.sidebar.image(get_icon(), use_column_width=True)
-    operation_type = st.sidebar.selectbox("op_type", ("Translation", "Datastore Profiling"), label_visibility="hidden")
+    operation_type = st.sidebar.selectbox("Select function:", ("Translation", "Datastore Profiling"))
 
 
     with st.sidebar:
@@ -123,7 +123,7 @@ def knn_main():
     
             resource = get_knn_model_resource(**cfgs[lang_pair])
             nmt_translation_results = translate_using_knn_model(doc, resource,
-            k = 1, lambda_=0.0, temperature=0.0
+                    k = 1, lambda_=0.0, temperature=1.0
             )
             translation_results = translate_using_knn_model(doc, resource, 
                 k=k, lambda_=lambda_, temperature=temperature)

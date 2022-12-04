@@ -13,8 +13,8 @@ export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/medical
-DATASTORE_SAVE_PATH=$PROJECT_PATH/datastore/vanilla/medical
+DATA_PATH=$PROJECT_PATH/data-bin/it
+DATASTORE_SAVE_PATH=$PROJECT_PATH/datastore/vanilla/it
 
 CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/validate.py $DATA_PATH \
 --task translation \

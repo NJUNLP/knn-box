@@ -43,6 +43,8 @@ class GreedyMergeKNNMT(VanillaKNNMT):
                             help="merge how many neighbors when trim the datastore")
         parser.add_argument("--enable-cache", action="store_true", default=False,
                             help="whether to use a retriever cache when inference.")
+        parser.add_argument("--cache-threshold", type=float, default=6.0,
+                            help="the threshold distance to use cache")
         parser.add_argument("--use-merge-weights", action="store_true", default=False,
                             help="whether to use merge weights when calclulate knn probs") 
         
@@ -119,7 +121,7 @@ class GreedyMergeKNNMTDecoder(TransformerDecoder):
 
             self.datastore = GreedyMergeDatastore.load(args.knn_datastore_path, 
                                 load_list=load_list) 
-            self.datastore.load_faiss_index("keys")
+            self.datastore.load_faiss_index("keys", move_to_gpu=False)
 
             if args.enable_cache:
                 self.retriever = CacheRetriever(datastore=self.datastore, k=args.knn_k)
@@ -180,8 +182,12 @@ class GreedyMergeKNNMTDecoder(TransformerDecoder):
                 return_list.append("query")
             if self.args.use_merge_weights:
                 return_list.append("merge_weights")
-            self.retriever.retrieve(x, return_list=return_list)
-        
+
+            if self.args.enable_cache:
+                self.retriever.retrieve(x, return_list=return_list, cache_threshold=self.args.cache_threshold)
+            else:
+                self.retriever.retrieve(x, return_list=return_list)
+
         if not features_only:
             x = self.output_layer(x)
         return x, extra
