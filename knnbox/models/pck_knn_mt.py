@@ -198,7 +198,7 @@ class PckKNNMTDecoder(TransformerDecoder):
     ):
         r"""
         we overwrite this function to change the probability calculation process.
-        step 1. 
+        step 1.
             calculate the knn probability based on retrieve resultes
         step 2.
             combine the knn probability with NMT's probability 

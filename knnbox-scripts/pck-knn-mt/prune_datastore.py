@@ -15,9 +15,9 @@ if __name__ == "__main__":
                 "prune_high_ppl","prune_low_ppl", "prune_half_low_half_high_ppl", "prune_similar_ppl",
                 "prune_high_entropy", "prune_low_entropy", "prune_half_low_half_high_entropy","prune_similar_entropy"
                 ], help="chose the prune policy")
-    parser.add_argument("--thread-num", type=int, default=10, help="thread num for pruning")
+    parser.add_argument("--thread-num", type=int, default=30, help="thread num for pruning")
     parser.add_argument("--n-of-4-gram", type=int, help="n of 4 gram")
-    parser.add_argument("--prune-sample-rate", type=float, default=0.1,
+    parser.add_argument("--prune-sample-rate", type=float, default=0.9,
             help="when prune, sample rate")
     parser.add_argument("--prune-minimum-sample", type=int, default=2,
             help="when prune, the minimum sample size to prune")
@@ -25,8 +25,11 @@ if __name__ == "__main__":
             help="pck-knn-mt dataset sample rate when train reduct network")
     parser.add_argument("--train-batch-size", type=int, default=10,
             help="the batch size to train reduction network")
-    parser.add_argument("--learning-rate", type=float, default=1e-3,
+    parser.add_argument("--learning-rate", type=float, default=3e-4,
             help="the learning rate when train reduct network")
+    parser.add_argument("--min-learning-rate", type=float, default=3e-5)
+    parser.add_argument("--patience", type=int, default=20,
+                    help="the patience when train reduct network")
     parser.add_argument("--epoch", type=int, default=10,
             help="train how much epoch")
     parser.add_argument("--dr-loss-ratio", type=float, default=0.3, help="loss ratio of dr")
@@ -60,6 +63,8 @@ if __name__ == "__main__":
             args.nce_loss_ratio,
             args.wp_loss_ratio,
             args.learning_rate,
+            args.min_learning_rate,
+            args.patience,
             args.epoch,
         )
         datastore.dump()

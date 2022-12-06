@@ -6,6 +6,7 @@ from random import randint, sample
 
 import torch
 import torch.optim as optim
+from torch.optim import lr_scheduler
 import torch.nn as nn
 import numpy as np
 from torch.utils.data import Dataset, DataLoader
@@ -386,6 +387,8 @@ class PckDatastore(Datastore, nn.Module):
             nce_loss_ratio,
             wp_loss_ratio,
             lr,
+            min_lr,
+            patience,
             epoch,
             device="cuda:0",
             ):
@@ -398,13 +401,21 @@ class PckDatastore(Datastore, nn.Module):
             num_workers = 2,
             drop_last = True,
         )
-
         print("[train reduction network] Start Training Reduction Network...")
         self.reduction_network.to(device)
         self.reduction_network.train() # train mode, enable dropout
         optimizer = optim.Adam(self.reduction_network.parameters(), lr)
+        # lerning scheduler
+        scheduler = lr_scheduler.ReduceLROnPlateau(
+                    optimizer,
+                    mode = "min",
+                    patience = 5,
+                    min_lr = min_lr,
+                    factor = 0.5, 
+                    )
         min_loss = 1e7
         best_checkpoint = None
+        no_improved_count = 0
         pbar = tqdm(total=epoch)
         for e in range(epoch):
             pbar.update(1)
@@ -414,13 +425,23 @@ class PckDatastore(Datastore, nn.Module):
                 loss = self.reduction_network(data, dr_loss_ratio, nce_loss_ratio, wp_loss_ratio, device)
                 losses.append(loss.data)
                 loss.backward()
+                # clip the norm
+                nn.utils.clip_grad_norm_(self.reduction_network.parameters(), 1.0)
                 optimizer.step()
             average_loss = (sum(losses)/len(losses)).item()
+            # adjust learning rate 
+            scheduler.step(average_loss)
             pbar.set_postfix(epoch=e, average_loss=average_loss)
             if average_loss < min_loss:
                 # save the checkpoint
                 best_checkpoint = self.reduction_network.state_dict()
                 min_loss = average_loss
+                no_improved_count = 0
+            else:
+                no_improved_count += 1
+                if no_improved_count >= patience:
+                    print("Early stoped beacuse not improved for %d" % no_improved_count)
+                    break
         
         self.reduction_network.load_state_dict(best_checkpoint)
         print("best checkpoint with loss %f ." % min_loss)
@@ -630,7 +651,6 @@ class ReductionNetwork(nn.Module):
 
 
 
-
 class TripletDatastoreSamplingDataset(Dataset):
     r"""
     this dataset is used for contrastive learning sample"""
@@ -753,7 +773,7 @@ class TripletDatastoreSamplingDataset(Dataset):
             #     self.key_list[i] = np.array(self.key_list[i])
 
             print('cluster done. Get %d nodes' % sum([len(keys) for keys in self.key_list]))
-
+        
         ## statistics collection of vocab frequency
         self.larger_than_2_vocab  = [i for i, v in enumerate(self.key_list) if len(v) >= 2 ]
         self.larger_than_1_vocab  = [i for i, v in enumerate(self.key_list) if len(v) >= 1 ]

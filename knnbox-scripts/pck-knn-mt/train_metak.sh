@@ -11,13 +11,13 @@ export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/koran
-SAVE_DIR=$PROJECT_PATH/save-models/combiner/pck/koran
-DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/pck/koran
-MAX_K=16
+DATA_PATH=$PROJECT_PATH/data-bin/it
+SAVE_DIR=$PROJECT_PATH/save-models/combiner/pck/it
+DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/pck/it
+MAX_K=8
 
 # using paper's settings
-CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --task translation \
 --train-subset valid --valid-subset valid \
 --best-checkpoint-metric "loss" \
