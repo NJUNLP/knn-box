@@ -12,7 +12,7 @@ from fairseq.models import (
 )
 
 from knnbox.common_utils import global_vars, select_keys_with_pad_mask, archs
-from knnbox.datastore import PlacDatastore
+from knnbox.datastore import Datastore
 from knnbox.retriever import Retriever
 from knnbox.combiner import Combiner
 
@@ -65,7 +65,7 @@ class PlacKNNMTDecoder(TransformerDecoder):
             # regist the datastore as a global variable if not exist,
             # because we need access the same datastore in another 
             # python file (when traverse the dataset and `add value`)
-            global_vars()["datastore"] = PlacDatastore(args.knn_datastore_path)  
+            global_vars()["datastore"] = Datastore(args.knn_datastore_path)  
         self.datastore = global_vars()["datastore"]
 
     def forward(

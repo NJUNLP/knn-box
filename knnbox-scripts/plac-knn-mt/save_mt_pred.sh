@@ -1,5 +1,5 @@
 :<<! 
-[script description]: build a datastore for vanilla-knn-mt
+[script description]: save mt model prediction
 [dataset]: multi domain DE-EN dataset
 [base model]: WMT19 DE-EN
 !
@@ -12,7 +12,7 @@ DATA_PATH=$PROJECT_PATH/data-bin/it
 DATASTORE_SAVE_PATH=$PROJECT_PATH/datastore/plac/it
 
 
-CUDA_VISIBLE_DEVICES=3 python $PROJECT_PATH/knnbox-scripts/common/validate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/validate.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
 --model-overrides "{'eval_bleu': False, 'required_seq_len_multiple':1, 'load_alignments': False}" \
