@@ -21,13 +21,16 @@ if __name__ == "__main__":
     # PLAC query excludes 1-NN from k_p, because 1-NN is query itself
     retriever   = Retriever(datastore=datastore, k=args.plac_k + 1)
     
+    print(f"[ loaded mt_pred and vals ]", flush=True)
+    
     # calc mt_known (mt_pred == target)
     datastore["mt_known"].add((datastore["mt_preds"].data == datastore["vals"].data).astype(int))
+    
+    print(f"[ mt_known calculated ]", flush=True)
     
     # query params
     query_size          = datastore["keys"].size
     query_batch_size    = args.plac_bsz
-    
     
     
     for i in tqdm(range(0, query_size, query_batch_size)):
@@ -41,9 +44,9 @@ if __name__ == "__main__":
         
         # 1-NN should be known, and the other k_p-NNs as well
         drop_index  = torch.nonzero(known_count == args.plac_k + 1).squeeze()
-        datastore[f"drop_index_k{args.plac_k}"].add(drop_index)
+        datastore[f"drop_index_k{args.plac_k}"].add(drop_index + start_idx)
     
     drop_count = datastore[f"drop_index_k{args.plac_k}"].size
     
-    print(f"[{drop_count}/{query_size} ({drop_count/query_size:.4f}) of datastore can be pruned \^o^/ ]", flush=True)
+    print(f"[ {drop_count}/{query_size} ({drop_count/query_size:.4f}) of datastore can be pruned \^o^/ ]", flush=True)
     datastore.dump()
