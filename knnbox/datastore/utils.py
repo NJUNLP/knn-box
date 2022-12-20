@@ -146,7 +146,7 @@ def build_faiss_index(
 
 
 
-def load_faiss_index(path, shape, n_probe,
+def load_faiss_index(path, n_probe,
             move_to_gpu=True, verbose=False):
     r"""
     load the faiss index"""
@@ -170,7 +170,7 @@ def load_faiss_index(path, shape, n_probe,
         index = faiss.index_cpu_to_gpu(res, 0, index, co)
     if verbose:
         print("  > reading index took {} s".format(time.time()-start_time))
-        print("  > the datastore shape is ", shape)
+        print("  > the datastore shape is ", (index.ntotal, index.d))
     index.nprobe = n_probe
     print("[Finish Loading Faiss Index Successfully ^_^]")
     return index

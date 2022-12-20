@@ -152,12 +152,10 @@ class Datastore:
         # we open config file and get the shape
         config = read_config(self.path)
         
-        shape = config["data_infos"][filename]["faiss_index_shape"]
         if not hasattr(self, "faiss_index") or self.faiss_index is None:
             self.faiss_index = {}
         self.faiss_index[filename] = load_faiss_index(
                         path = index_path,
-                        shape = shape,
                         n_probe = 32,
                         move_to_gpu = move_to_gpu,
                         verbose=verbose
@@ -189,15 +187,6 @@ class Datastore:
                     use_gpu=use_gpu,
                     verbose=verbose
                     )
-        
-        # wrtie the shape information to the config file
-        config = read_config(self.path)
-        if do_pca:
-            config["data_infos"][name]["faiss_index_shape"] = \
-                        list(self.datas[name].shape[:-1]) + [pca_dim]
-        else:
-            config["data_infos"][name]["faiss_index_shape"] = self.datas[name].shape
-        write_config(self.path, config)
 
 
  
