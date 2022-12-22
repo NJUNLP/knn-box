@@ -7,8 +7,6 @@
 export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
-BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/it
 PLAC_DATASTORE_SAVE_PATH=$PROJECT_PATH/datastore/plac/it
 PLAC_K=4
 PLAC_BSZ=4096
