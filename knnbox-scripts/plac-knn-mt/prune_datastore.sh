@@ -13,7 +13,7 @@ PLAC_K=4
 PLAC_BSZ=4096
 PLAC_RATIO=0.40
 
-python $PROJECT_PATH/knnbox-scripts/plac-knn-mt/prune_datastore.py \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/plac-knn-mt/prune_datastore.py \
     --plac-datastore-path $PLAC_DATASTORE_SAVE_PATH \
     --datastore-path $DATASTORE_SAVE_PATH \
     --pruned-datastore-path ${DATASTORE_SAVE_PATH}_plac_k${PLAC_K}_ratio${PLAC_RATIO} \
