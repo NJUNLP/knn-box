@@ -48,9 +48,9 @@ class RobustCombiner(nn.Module):
 
         self.apply(_apply)
 
-    def get_knn_prob(self, vals, keys, distances, device="cuda:0"):
-        metak_outputs = self.meta_k_network(vals, distances)
-
+    def get_knn_prob(self, vals, keys, distances, net_output, target, last_hidden, device="cuda:0"):
+        metak_outputs = self.meta_k_network(vals, distances, keys, net_output, target, last_hidden)
+        # TODO 
         if self.lambda_trainable:
             self.lambda_ = metak_outputs["lambda_net_output"]
         
@@ -160,59 +160,30 @@ class MetaKNetwork(nn.Module):
         self.relative_label_count = relative_label_count
         self.device = device
         self.mask_for_label_count = None
+        self.mid_size = 32
         self.num_updates = 0
 
-        if k_trainable:
-            self.distance_to_k = nn.Sequential(
-                    nn.Linear(self.max_k*2 if self.label_count_as_feature else self.max_k, k_net_hid_size),
-                    nn.Tanh(),
-                    nn.Dropout(p=k_net_dropout_rate),
-                    nn.Linear(k_net_hid_size, int(math.log(self.max_k, 2))+1),
-                    nn.Softmax(dim=-1)
-                ) # [1 neighbor, 2 neighbor, 4 neighbor, 8 neighbor, ..]
-            if self.label_count_as_feature:
-                nn.init.normal_(self.distance_to_k[0].weight[:, :self.max_k], mean=0, std=0.01)
-                nn.init.normal_(self.distance_to_k[0].weight[:, self.max_k:], mean=0, std=0.1)
-            else:
-                nn.init.normal_(self.distance_to_k[0].weight, mean=0, std=0.01)
-
-        if lambda_trainable:
-            self.distance_to_lambda = nn.Sequential(
-                    nn.Linear(self.max_k*2 if self.label_count_as_feature else self.max_k, lambda_net_hid_size),
-                    nn.Tanh(),
-                    nn.Dropout(p=lambda_net_dropout_rate),
-                    nn.Linear(lambda_net_hid_size, 1),
-                    nn.Sigmoid()
-                )
-
-            if self.label_count_as_feature:
-                nn.init.xavier_normal_(self.distance_to_lambda[0].weight[:, :self.max_k], gain=0.01)
-                nn.init.xavier_normal_(self.distance_to_lambda[0].weight[:, self.max_k:], gain=0.1)
-                nn.init.xavier_normal_(self.distance_to_lambda[-2].weight)
-            else:
-                nn.init.normal_(self.distance_to_lambda[0].weight, mean=0, std=0.01)
-        
-        if temperature_trainable:
-            self.distance_to_temperature = nn.Sequential(
-                    nn.Linear(self.max_k*2 if self.label_count_as_feature else self.max_k,
-                            temperature_net_hid_size),
-                    nn.Tanh(),
-                    nn.Dropout(p=temperature_net_dropout_rate),
-                    nn.Linear(temperature_net_hid_size, 1),
-                    nn.Sigmoid()
-                )
-            if self.label_count_as_feature:
-                nn.init.xavier_normal_(self.distance_to_temperature[0].weight[:, :self.max_k], gain=0.01)
-                nn.init.xavier_normal_(self.distance_to_temperature[0].weight[:, self.max_k:], gain=0.1)
-                nn.init.xavier_normal_(self.distance_to_temperature[-2].weight)
-            else:
-                nn.init.normal_(self.distance_to_temperature[0].weight, mean=0, std=0.01)
+        # Robust kNN-MT always uses the same configuration
+        self.distance_func = nn.Sequential(
+            nn.Linear(self.max_k * 2 + 8, 1),
+        )
+        self.distance_fc1 = nn.Sequential(
+            nn.Linear(2, 4),
+            nn.Tanh(),
+            nn.Linear(4, 1),
+        )
+        self.distance_fc2 = nn.Sequential(
+            nn.Linear(self.max_k * 2, self.mid_size),
+            nn.Tanh(),
+            nn.Linear(self.mid_size, 2),
+        )
 
     def set_num_updates(self, num_updates):
         """State from trainer to pass along to model at every update."""
         self.num_updates = num_updates
 
     def forward(self, vals, distances):
+        # TODO
         if self.label_count_as_feature:
             label_counts = self._get_label_count_segment(vals, relative=self.relative_label_count)
             network_inputs = torch.cat((distances.detach(), label_counts.detach().float()), dim=-1)

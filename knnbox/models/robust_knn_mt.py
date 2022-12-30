@@ -208,6 +208,7 @@ class RobustKNNMTDecoder(TransformerDecoder):
         if self.args.knn_mode == "inference" or self.args.knn_mode == "train_metak":
             import pdb
             pdb.set_trace()
+            # TODO
             knn_prob = self.combiner.get_knn_prob(
                 **self.retriever.results, 
                 net_output=net_output[0],
