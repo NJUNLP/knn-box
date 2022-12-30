@@ -77,6 +77,38 @@ class RobustKNNMT(TransformerModel):
             no_encoder_attn=getattr(args, "no_cross_attention", False),
         )
 
+    def forward(
+            self,
+            src_tokens,
+            src_lengths,
+            prev_output_tokens,
+            return_all_hiddens: bool = True,
+            features_only: bool = False,
+            alignment_layer: Optional[int] = None,
+            alignment_heads: Optional[int] = None,
+            target: Optional[Tensor] = None,
+    ):
+        """
+        Run the forward pass for an encoder-decoder model.
+
+        Copied from the base class, but without ``**kwargs``,
+        which are not supported by TorchScript.
+        """
+        encoder_out = self.encoder(
+            src_tokens, src_lengths=src_lengths, return_all_hiddens=return_all_hiddens
+        )
+        decoder_out = self.decoder(
+            prev_output_tokens,
+            encoder_out=encoder_out,
+            features_only=features_only,
+            alignment_layer=alignment_layer,
+            alignment_heads=alignment_heads,
+            src_lengths=src_lengths,
+            return_all_hiddens=return_all_hiddens,
+            target=target,
+        )
+        return decoder_out
+
 
 class RobustKNNMTDecoder(TransformerDecoder):
     r"""
@@ -129,6 +161,7 @@ class RobustKNNMTDecoder(TransformerDecoder):
         alignment_heads: Optional[int] = None,
         src_lengths: Optional[Any] = None,
         return_all_hiddens: bool = False,
+        target: Optional[Tensor] = None,
     ):
         r"""
         we overwrite this function to do something else besides forward the TransformerDecoder.
@@ -152,6 +185,8 @@ class RobustKNNMTDecoder(TransformerDecoder):
         elif self.args.knn_mode == "inference" or self.args.knn_mode == "train_metak":
             self.retriever.retrieve(x, return_list=["vals", "distances", "keys"]) 
 
+        extra.update({"last_hidden": x, "target": target})
+        
         if not features_only:
             x = self.output_layer(x)
         return x, extra
@@ -171,7 +206,15 @@ class RobustKNNMTDecoder(TransformerDecoder):
             combine the knn probability with NMT's probability 
         """
         if self.args.knn_mode == "inference" or self.args.knn_mode == "train_metak":
-            knn_prob = self.combiner.get_knn_prob(**self.retriever.results, device=net_output[0].device)
+            import pdb
+            pdb.set_trace()
+            knn_prob = self.combiner.get_knn_prob(
+                **self.retriever.results, 
+                net_output=net_output[0],
+                last_hidden=net_output[1]["last_hidden"],
+                target=net_output[1]["target"],
+                device=net_output[0].device
+            )
             combined_prob, _ = self.combiner.get_combined_prob(knn_prob, net_output[0], log_probs=log_probs)
             return combined_prob
         else:
@@ -229,3 +272,38 @@ def transformer_wmt19_de_en(args):
 
         
 
+from fairseq import metrics, utils
+from fairseq.criterions import register_criterion
+from fairseq.criterions.label_smoothed_cross_entropy import LabelSmoothedCrossEntropyCriterion
+
+@register_criterion("label_smoothed_cross_entropy_for_robust")
+class LabelSmoothedCrossEntropyCriterionForRobust(
+    LabelSmoothedCrossEntropyCriterion
+):
+
+    def forward(self, model, sample, reduce=True):
+        """Compute the loss for the given sample.
+
+        Returns a tuple with three elements:
+        1) the loss
+        2) the sample size, which is used as the denominator for the gradient
+        3) logging outputs to display while training
+        """
+
+        net_output = model(**sample["net_input"], target=sample['target'])
+        loss, nll_loss = self.compute_loss(model, net_output, sample, reduce=reduce)
+        sample_size = (
+            sample["target"].size(0) if self.sentence_avg else sample["ntokens"]
+        )
+        logging_output = {
+            "loss": loss.data,
+            "nll_loss": nll_loss.data,
+            "ntokens": sample["ntokens"],
+            "nsentences": sample["target"].size(0),
+            "sample_size": sample_size,
+        }
+        if self.report_accuracy:
+            n_correct, total = self.compute_accuracy(model, net_output, sample)
+            logging_output["n_correct"] = utils.item(n_correct.data)
+            logging_output["total"] = utils.item(total.data)
+        return loss, sample_size, logging_output
