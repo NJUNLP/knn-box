@@ -38,7 +38,7 @@ class Retriever:
         for data_name in return_list:
             if data_name not in ["distances", "indices", "k", "query"]:
                 assert data_name in self.datastore.datas, \
-                                    "You must load the {} of datastore first".foramt(data_name)
+                                    "You must load the {} of datastore first".format(data_name)
                 ret[data_name] = torch.tensor(self.datastore[data_name].data[indices], device=query.device)
         
         self.results = ret # save the retrieved results
