@@ -99,7 +99,7 @@ class RobustKNNMTDecoder(TransformerDecoder):
             self.datastore = global_vars()["datastore"]
 
         else:
-            self.datastore = Datastore.load(args.knn_datastore_path, load_list=["vals"])
+            self.datastore = Datastore.load(args.knn_datastore_path, load_list=["keys", "vals"])
             self.datastore.load_faiss_index("keys")
             self.retriever = Retriever(datastore=self.datastore, k=args.knn_max_k)
             if args.knn_mode == "train_metak":
@@ -136,8 +136,6 @@ class RobustKNNMTDecoder(TransformerDecoder):
         when the action mode is `building datastore`, we save keys to datastore.
         when the action mode is `inference`, we retrieve the datastore with hidden state.
         """
-        import pdb
-        pdb.set_trace()
         x, extra = self.extract_features(
             prev_output_tokens,
             encoder_out=encoder_out,
@@ -179,6 +177,14 @@ class RobustKNNMTDecoder(TransformerDecoder):
         else:
             return super().get_normalized_probs(net_output, log_probs, sample)
 
+    def set_num_updates(self, num_updates):
+        """State from trainer to pass along to model at every update."""
+        
+        def _apply(m):
+            if hasattr(m, "set_num_updates") and m != self:
+                m.set_num_updates(num_updates)
+
+        self.apply(_apply)
 
 
 

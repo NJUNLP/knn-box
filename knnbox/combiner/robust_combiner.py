@@ -39,8 +39,16 @@ class RobustCombiner(nn.Module):
         self.lambda_ = None if self.lambda_trainable else kwargs["lambda_"]
         self.temperature = None if self.temperature_trainable else kwargs["temperature"]
 
+    def set_num_updates(self, num_updates):
+        """State from trainer to pass along to model at every update."""
+        
+        def _apply(m):
+            if hasattr(m, "set_num_updates") and m != self:
+                m.set_num_updates(num_updates)
 
-    def get_knn_prob(self, vals, distances, device="cuda:0"):
+        self.apply(_apply)
+
+    def get_knn_prob(self, vals, keys, distances, device="cuda:0"):
         metak_outputs = self.meta_k_network(vals, distances)
 
         if self.lambda_trainable:
@@ -152,6 +160,7 @@ class MetaKNetwork(nn.Module):
         self.relative_label_count = relative_label_count
         self.device = device
         self.mask_for_label_count = None
+        self.num_updates = 0
 
         if k_trainable:
             self.distance_to_k = nn.Sequential(
@@ -199,6 +208,9 @@ class MetaKNetwork(nn.Module):
             else:
                 nn.init.normal_(self.distance_to_temperature[0].weight, mean=0, std=0.01)
 
+    def set_num_updates(self, num_updates):
+        """State from trainer to pass along to model at every update."""
+        self.num_updates = num_updates
 
     def forward(self, vals, distances):
         if self.label_count_as_feature:
