@@ -13,7 +13,7 @@ PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd 
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
 DATA_PATH=$PROJECT_PATH/data-bin/it
 SAVE_DIR=$PROJECT_PATH/save-models/combiner/robust/it
-DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/it.12
+DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/it
 MAX_K=8
 
 # using paper's settings

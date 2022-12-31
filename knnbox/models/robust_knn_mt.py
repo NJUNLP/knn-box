@@ -209,7 +209,7 @@ class RobustKNNMTDecoder(TransformerDecoder):
         step 2.
             combine the knn probability with NMT's probability 
         """
-        network_probs = net_output[0]
+        network_probs = utils.softmax(net_output[0], dim=-1, onnx_trace=self.onnx_trace)
         knn_dists = self.retriever.results["distances"]
         tgt_index = self.retriever.results["vals"]
         knn_key = self.retriever.results["keys"]
@@ -252,23 +252,27 @@ class RobustKNNMTDecoder(TransformerDecoder):
                 tgt_index = tgt_index.gather(-1, new_index)
                 network_select_probs = network_probs.gather(index=tgt_index, dim=-1)
                 knn_key_feature = knn_key_feature.gather(-1, new_index)
-                label_counts = self.combiner._get_label_count_segment(tgt_index)
                 
         elif self.args.knn_mode == "inference":
             knn_probs = utils.softmax(self.output_layer(knn_key.float()), dim=-1, onnx_trace=self.onnx_trace) # B, S, K, V
             knn_key_feature = knn_probs.gather(-1, index=tgt_index.unsqueeze(-1)).squeeze(-1)
             
-        
-        import pdb
-        pdb.set_trace()
-        # TODO
-        #knn_dists = torch.sum((knn_key - last_hidden.unsqueeze(-2).detach()) ** 2, dim=3)
-        conf_mask = None
-        
         if self.args.knn_mode == "inference" or self.args.knn_mode == "train_metak":
+            label_counts = self.combiner._get_label_count_segment(tgt_index)
+            all_key_feature = torch.cat([knn_key_feature.log().unsqueeze(-1), network_select_probs.log().unsqueeze(-1)], -1)
+            top_prob, top_idx = torch.topk(network_probs, 8)
+            knn_feat = torch.cat([knn_dists, label_counts.float()], -1) 
+            
             import pdb
             pdb.set_trace()
             # TODO
+            noise_logit = self.distance_fc1(all_key_feature).squeeze(-1)
+            sim_lambda = self.distance_func(torch.cat([top_prob.log(), knn_key_feature.log(), network_select_probs.log()], -1))
+            lambda_logit = self.distance_fc2(knn_feat.view(B, S, -1))
+            knn_lambda = torch.softmax(torch.cat([lambda_logit[:, :, :1], sim_lambda], -1), -1)[:, :, :1]
+            tempe = torch.sigmoid(lambda_logit[:, :, 1:2])
+            probs = torch.softmax(-knn_dists * tempe + noise_logit, -1) 
+
             knn_prob = self.combiner.get_knn_prob(
                 **self.retriever.results, 
                 net_output=net_output[0],
