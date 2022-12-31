@@ -24,7 +24,7 @@ CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --finetune-from-model $BASE_MODEL \
 --optimizer adam --adam-betas '(0.9, 0.98)' --adam-eps 1e-8 --clip-norm 1.0 \
 --lr 3e-4 --lr-scheduler reduce_lr_on_plateau \
---min-lr 3e-05 --criterion label_smoothed_cross_entropy --label-smoothing 0.001 \
+--min-lr 3e-05 --label-smoothing 0.001 \
 --lr-patience 5 --lr-shrink 0.5 --patience 30 --max-epoch 500 --max-update 5000 \
 --criterion label_smoothed_cross_entropy \
 --save-interval-updates 100 \

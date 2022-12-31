@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import math
 import os
 from knnbox.common_utils import read_config, write_config
-from knnbox.combiner.utils import calculate_combined_prob
+from knnbox.combiner.utils import calculate_combined_prob, calculate_knn_prob
 
 
 class AdaptiveCombiner(nn.Module):
@@ -244,7 +244,7 @@ class MetaKNetwork(nn.Module):
         retrieve_label_counts[:, :, :-1] -= 1
 
         if relative:
-            relative_label_counts[:, :, 1:] = relative_label_counts[:, :, 1:] - relative_label_counts[:, :, :-1]
+            retrieve_label_counts[:, :, 1:] = retrieve_label_counts[:, :, 1:] - retrieve_label_counts[:, :, :-1]
         
         return retrieve_label_counts
 
