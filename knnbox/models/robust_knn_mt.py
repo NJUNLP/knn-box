@@ -184,7 +184,7 @@ class RobustKNNMTDecoder(TransformerDecoder):
             self.datastore["keys"].add(keys.half())
         
         elif self.args.knn_mode == "inference" or self.args.knn_mode == "train_metak":
-            self.retriever.retrieve(x, return_list=["vals", "distances", "keys"]) 
+            self.retriever.retrieve(x, return_list=["vals", "query", "distances", "keys"]) 
 
         extra.update({"last_hidden": x, "target": target})
         
@@ -210,11 +210,17 @@ class RobustKNNMTDecoder(TransformerDecoder):
         knn_dists = self.retriever.results["distances"]
         tgt_index = self.retriever.results["vals"]
         knn_key = self.retriever.results["keys"]
-        knn_lambda = None
+        queries = self.retriever.results["query"]
+        
+        knn_dists = torch.sum((knn_key - queries.unsqueeze(-2).detach()) ** 2, dim=-1)   
+        knn_dists, new_index = torch.sort(knn_dists, dim=-1)
+        tgt_index = tgt_index.gather(dim=-1, index=new_index)
+        knn_key = knn_key.gather(dim=-2, index=new_index.unsqueeze(-1).expand(knn_key.shape))
+        
         B, S, K = knn_dists.size()
         network_select_probs = network_probs.gather(index=tgt_index, dim=-1) # [batch, seq len, K]
         
-        if self.args.knn_mode == "train_metak":
+        if self.training:
             target=net_output[1]["target"]
             last_hidden=net_output[1]["last_hidden"]
             random_rate = 1.0
@@ -250,7 +256,7 @@ class RobustKNNMTDecoder(TransformerDecoder):
                 network_select_probs = network_probs.gather(index=tgt_index, dim=-1)
                 knn_key_feature = knn_key_feature.gather(-1, new_index)
                 
-        elif self.args.knn_mode == "inference":
+        else:
             knn_probs = utils.softmax(self.output_layer(knn_key.float()), dim=-1, onnx_trace=self.onnx_trace) # B, S, K, V
             knn_key_feature = knn_probs.gather(-1, index=tgt_index.unsqueeze(-1)).squeeze(-1)
             

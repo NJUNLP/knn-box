@@ -25,21 +25,18 @@ CUDA_VISIBLE_DEVICES=3 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --optimizer adam --adam-betas '(0.9, 0.98)' --adam-eps 1e-8 --clip-norm 1.0 \
 --lr 3e-4 --lr-scheduler reduce_lr_on_plateau \
 --min-lr 3e-05 --label-smoothing 0.001 \
---lr-patience 5 --lr-shrink 0.5 --patience 30 --max-epoch 500 --max-update 5000 \
+--lr-patience 5 --lr-shrink 0.5 --patience 30 --max-epoch 500 --max-update 5000 --validate-after-updates 1000 \
 --criterion label_smoothed_cross_entropy_for_robust \
 --save-interval-updates 100 \
 --no-epoch-checkpoints --no-last-checkpoints --no-save-optimizer-state \
 --tensorboard-logdir $SAVE_DIR/log \
 --save-dir $SAVE_DIR \
---batch-size 32 \
---update-freq 1 \
+--batch-size 4 \
+--update-freq 8 \
 --user-dir $PROJECT_PATH/knnbox/models \
 --arch "robust_knn_mt@transformer_wmt19_de_en" \
 --knn-mode "train_metak" \
 --knn-datastore-path $DATASTORE_LOAD_PATH \
 --knn-max-k $MAX_K \
---knn-k-type trainable \
---knn-lambda-type trainable \
---knn-temperature-type fixed --knn-temperature 10.0 \
 --knn-combiner-path $SAVE_DIR \
 

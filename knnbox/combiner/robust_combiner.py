@@ -55,7 +55,7 @@ class RobustCombiner(nn.Module):
         self.lambda_ = metak_outputs["knn_lambda"]
 
         knn_prob = torch.zeros(*network_probs.shape, device=device)
-        knn_prob.scatter_(dim=-1, index=tgt_index, src=metak_outputs["probs"])
+        knn_prob.scatter_add_(dim=-1, index=tgt_index, src=metak_outputs["probs"])
 
         return knn_prob
 
@@ -158,6 +158,9 @@ class MetaKNetwork(nn.Module):
         knn_lambda = torch.softmax(torch.cat([lambda_logit[:, :, :1], sim_lambda], -1), -1)[:, :, :1]
         tempe = torch.sigmoid(lambda_logit[:, :, 1:2])
         probs = torch.softmax(-knn_dists * tempe + noise_logit, -1) 
+        
+        import pdb
+        # pdb.set_trace()
         
         return {
             "probs": probs,

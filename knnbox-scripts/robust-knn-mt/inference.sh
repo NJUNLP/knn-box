@@ -13,7 +13,7 @@ DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/it
 COMBINER_LOAD_DIR=$PROJECT_PATH/save-models/combiner/robust/it
 MAX_K=8
 
-CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=3 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
 --dataset-impl mmap \
