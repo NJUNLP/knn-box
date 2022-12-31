@@ -35,7 +35,6 @@ class KernelSmoothedCombiner(nn.Module):
     
         # caclulate bandwidth
         # keys shape: [..., k, probability_dim]
-        vals_shape = list(vals.size())
         average_key = torch.mean(keys, dim=-2)
         # query and average_key may be half precision, convert them to float32 first
         query = query.float()
@@ -55,13 +54,10 @@ class KernelSmoothedCombiner(nn.Module):
         weighted_sum_key = knn_weights.repeat(*([1]*(knn_weights.dim()-1)), keys.size(-1)) * keys
         weighted_sum_key = torch.sum(weighted_sum_key, dim=-2)
         
-        vals_shape.append(self.probability_dim)
-        probabilities_shape = vals_shape
+        B, S, K = vals.size()
         # construct prob
-        knn_probs = torch.zeros(*probabilities_shape, device=device)
-        knn_probs.scatter_(dim=-1, index=vals.unsqueeze(-1), src=knn_weights)
-        # sum up same tok's prob
-        knn_probs = knn_probs.sum(dim=-2)
+        knn_probs = torch.zeros(B, S, self.probability_dim, device=device)
+        knn_probs.scatter_add_(dim=-1, index=vals, src=knn_weights.squeeze(-1))
 
         # caculate the lambda
         self.lambda_ = self.weight_estimator(query, weighted_sum_key)

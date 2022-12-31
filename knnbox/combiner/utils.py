@@ -8,16 +8,13 @@ def calculate_knn_prob(vals, distances, probability_dim, temperature, device, **
     How vanilla knn-mt calculates knn probs using retrieved vals and distances.
     """
     scaled_dists = - distances / temperature
-    knn_weights = torch.softmax(scaled_dists, dim=-1).unsqueeze(-1)
+    knn_weights = torch.softmax(scaled_dists, dim=-1)
     
-    probabilities_shape = list(vals.size()) + [probability_dim]
+    B, S, K = vals.size()
 
     # construct prob
-    knn_probs = torch.zeros(*probabilities_shape, device=device)
-    knn_probs.scatter_(dim=-1, index=vals.unsqueeze(-1), src=knn_weights)
-    
-    # sum same token's prob
-    knn_probs = knn_probs.sum(dim=-2)
+    knn_probs = torch.zeros(B, S, probability_dim, device=device)
+    knn_probs.scatter_add_(dim=-1, index=vals, src=knn_weights)
 
     return knn_probs
 
@@ -47,15 +44,12 @@ def calculate_knn_prob_with_merge_weight(vals, distances, merge_weights, probabi
     """
     # consider merge weights here
     scaled_dists = - distances / temperature + torch.log(merge_weights.float())
-    knn_weights = torch.softmax(scaled_dists, dim=-1).unsqueeze(-1)
+    knn_weights = torch.softmax(scaled_dists, dim=-1)
     
-    probabilities_shape = list(vals.size()) + [probability_dim]
+    B, S, K = vals.size()
 
     # construct prob
-    knn_probs = torch.zeros(*probabilities_shape, device=device)
-    knn_probs.scatter_(dim=-1, index=vals.unsqueeze(-1), src=knn_weights)
-    
-    # sum same token's prob
-    knn_probs = knn_probs.sum(dim=-2)
+    knn_probs = torch.zeros(B, S, probability_dim, device=device)
+    knn_probs.scatter_add_(dim=-1, index=vals, src=knn_weights)
 
     return knn_probs
