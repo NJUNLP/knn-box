@@ -16,13 +16,15 @@ class RobustCombiner(nn.Module):
                 **kwargs
                 ):
         super().__init__()
-        self.meta_k_network = MetaKNetwork(max_k, 
-                    mid_size=midsize, **kwargs)
         
         self.max_k = max_k
         self.probability_dim = probability_dim
+        self.midsize = midsize
         self.kwargs = kwargs 
         self.mask_for_distance = None
+
+        self.meta_k_network = MetaKNetwork(max_k, 
+                    mid_size=self.midsize, **kwargs)
 
     def set_num_updates(self, num_updates):
         """State from trainer to pass along to model at every update."""
@@ -68,9 +70,7 @@ class RobustCombiner(nn.Module):
         config = {}
         config["max_k"] = self.max_k
         config["probability_dim"] = self.probability_dim
-        config["k_trainable"] = self.k_trainable
-        config["lambda_trainable"] = self.lambda_trainable
-        config["temperature_trainable"] = self.temperature_trainable
+        config["midsize"] = self.midsize
         for k, v in self.kwargs.items():
             config[k] = v
         write_config(path, config)
