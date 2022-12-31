@@ -223,6 +223,7 @@ class RobustKNNMTDecoder(TransformerDecoder):
         if self.training:
             target=net_output[1]["target"]
             last_hidden=net_output[1]["last_hidden"]
+            # TODO These hyper-params will become arguments
             random_rate = 1.0
             noise_var = 0.01
             e = 1000

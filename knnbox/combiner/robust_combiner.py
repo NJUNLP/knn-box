@@ -23,6 +23,7 @@ class RobustCombiner(nn.Module):
         self.kwargs = kwargs 
         self.mask_for_distance = None
 
+        # TODO will rename these networks
         self.meta_k_network = MetaKNetwork(max_k, 
                     mid_size=self.midsize, **kwargs)
 
