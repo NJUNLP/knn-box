@@ -125,18 +125,21 @@ class MetaKNetwork(nn.Module):
         self.mid_size = mid_size
 
         # Robust kNN-MT always uses the same configuration
+        # ? WP network: S_{NMT}
         self.distance_func = nn.Sequential(
-            nn.Linear(self.max_k * 2 + 8, 1),
+            nn.Linear(self.max_k * 2 + 8, 1), # ? W_6
         )
+        # ? DC network: c_k
         self.distance_fc1 = nn.Sequential(
-            nn.Linear(2, 4),
+            nn.Linear(2, 4), # ? W_4
             nn.Tanh(),
-            nn.Linear(4, 1),
+            nn.Linear(4, 1), # ? W_3
         )
+        # ? WP network: S_{kNN}  &  WP network: T
         self.distance_fc2 = nn.Sequential(
-            nn.Linear(self.max_k * 2, self.mid_size),
+            nn.Linear(self.max_k * 2, self.mid_size), # ? W_2
             nn.Tanh(),
-            nn.Linear(self.mid_size, 2),
+            nn.Linear(self.mid_size, 2), # ? [W_1, W_5]
         )
 
     def forward(
@@ -152,11 +155,15 @@ class MetaKNetwork(nn.Module):
         all_key_feature = torch.cat([knn_key_feature.log().unsqueeze(-1), network_select_probs.log().unsqueeze(-1)], -1)
         top_prob, top_idx = torch.topk(network_probs, 8)
         knn_feat = torch.cat([knn_dists, label_counts.float()], -1) 
-        
+        # ? c_k
         noise_logit = self.distance_fc1(all_key_feature).squeeze(-1)
+        # ? S_{NMT}
         sim_lambda = self.distance_func(torch.cat([top_prob.log(), knn_key_feature.log(), network_select_probs.log()], -1))
+        # ? [S_{kNN},T]
         lambda_logit = self.distance_fc2(knn_feat.view(B, S, -1))
+        # ? \lambda_t
         knn_lambda = torch.softmax(torch.cat([lambda_logit[:, :, :1], sim_lambda], -1), -1)[:, :, :1]
+        # ? T
         tempe = torch.sigmoid(lambda_logit[:, :, 1:2])
         probs = torch.softmax(-knn_dists * tempe + noise_logit, -1) 
         
