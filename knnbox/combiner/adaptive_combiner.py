@@ -67,11 +67,10 @@ class AdaptiveCombiner(nn.Module):
             distances = - distances / temperature
 
             knn_weight = torch.softmax(distances, dim=-1)  # [B, S, R_K, K]
-            weight_sum_knn_weight = torch.matmul(k_probs.unsqueeze(-2), knn_weight).squeeze(-2).unsqueeze(-1)  # [B, S, K, 1]
-            knn_prob = torch.zeros(B, S, K, self.probability_dim, device=device)  # [B, S, K, Vocab Size]
+            weight_sum_knn_weight = torch.matmul(k_probs.unsqueeze(-2), knn_weight).squeeze(-2) # [B, S, K]
+            knn_prob = torch.zeros(B, S, self.probability_dim, device=device)  # [B, S, K, Vocab Size]
             # construct the knn 
-            knn_prob.scatter_(src=weight_sum_knn_weight.float(), index=vals.unsqueeze(-1), dim=-1)
-            knn_prob = knn_prob.sum(dim=-2)  # [Batch Size, seq len, vocab size]
+            knn_prob.scatter_add_(src=weight_sum_knn_weight.float(), index=vals, dim=-1)
 
         else:
             # if k is not trainable, the process of calculate knn probs is same as vanilla knn-mt
