@@ -139,10 +139,7 @@ class RobustKNNMTDecoder(TransformerDecoder):
             self.datastore.load_faiss_index("keys")
             self.retriever = Retriever(datastore=self.datastore, k=args.knn_max_k)
             if args.knn_mode == "train_metak":
-                self.combiner = RobustCombiner(max_k=args.knn_max_k, probability_dim=len(dictionary),
-                            k_trainable=(args.knn_k_type=="trainable"),
-                            lambda_trainable=(args.knn_lambda_type=="trainable"), lamda_=args.knn_lambda,
-                            temperature_trainable=(args.knn_temperature_type=="trainable"), temperature=args.knn_temperature
+                self.combiner = RobustCombiner(max_k=args.knn_max_k, probability_dim=len(dictionary)
                 )
             elif args.knn_mode == "inference":
                 self.combiner = RobustCombiner.load(args.knn_combiner_path)
@@ -258,26 +255,12 @@ class RobustKNNMTDecoder(TransformerDecoder):
             knn_key_feature = knn_probs.gather(-1, index=tgt_index.unsqueeze(-1)).squeeze(-1)
             
         if self.args.knn_mode == "inference" or self.args.knn_mode == "train_metak":
-            label_counts = self.combiner._get_label_count_segment(tgt_index)
-            all_key_feature = torch.cat([knn_key_feature.log().unsqueeze(-1), network_select_probs.log().unsqueeze(-1)], -1)
-            top_prob, top_idx = torch.topk(network_probs, 8)
-            knn_feat = torch.cat([knn_dists, label_counts.float()], -1) 
-            
-            import pdb
-            pdb.set_trace()
-            # TODO
-            noise_logit = self.distance_fc1(all_key_feature).squeeze(-1)
-            sim_lambda = self.distance_func(torch.cat([top_prob.log(), knn_key_feature.log(), network_select_probs.log()], -1))
-            lambda_logit = self.distance_fc2(knn_feat.view(B, S, -1))
-            knn_lambda = torch.softmax(torch.cat([lambda_logit[:, :, :1], sim_lambda], -1), -1)[:, :, :1]
-            tempe = torch.sigmoid(lambda_logit[:, :, 1:2])
-            probs = torch.softmax(-knn_dists * tempe + noise_logit, -1) 
-
             knn_prob = self.combiner.get_knn_prob(
-                **self.retriever.results, 
-                net_output=net_output[0],
-                last_hidden=net_output[1]["last_hidden"],
-                target=net_output[1]["target"],
+                tgt_index=tgt_index,
+                knn_dists=knn_dists,
+                knn_key_feature=knn_key_feature,
+                network_probs=network_probs,
+                network_select_probs=network_select_probs,
                 device=net_output[0].device
             )
             combined_prob, _ = self.combiner.get_combined_prob(knn_prob, net_output[0], log_probs=log_probs)

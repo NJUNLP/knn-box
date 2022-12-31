@@ -17,7 +17,7 @@ DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/it
 MAX_K=8
 
 # using paper's settings
-CUDA_VISIBLE_DEVICES=2 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=3 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --task translation \
 --train-subset valid --valid-subset valid \
 --best-checkpoint-metric "loss" \
@@ -31,8 +31,8 @@ CUDA_VISIBLE_DEVICES=2 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --no-epoch-checkpoints --no-last-checkpoints --no-save-optimizer-state \
 --tensorboard-logdir $SAVE_DIR/log \
 --save-dir $SAVE_DIR \
---batch-size 4 \
---update-freq 8 \
+--batch-size 32 \
+--update-freq 1 \
 --user-dir $PROJECT_PATH/knnbox/models \
 --arch "robust_knn_mt@transformer_wmt19_de_en" \
 --knn-mode "train_metak" \

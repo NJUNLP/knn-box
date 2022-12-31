@@ -12,32 +12,17 @@ class RobustCombiner(nn.Module):
     def __init__(self, 
                 max_k,
                 probability_dim,
-                k_trainable = True,
-                lambda_trainable = True,
-                temperature_trainable = True,
+                midsize = 32,
                 **kwargs
                 ):
         super().__init__()
         self.meta_k_network = MetaKNetwork(max_k, 
-                    k_trainable, lambda_trainable, temperature_trainable, **kwargs)
+                    mid_size=midsize, **kwargs)
         
         self.max_k = max_k
         self.probability_dim = probability_dim
-        self.k_trainable = k_trainable
-        self.lambda_trainable = lambda_trainable
-        self.temperature_trainable = temperature_trainable
         self.kwargs = kwargs 
         self.mask_for_distance = None
-
-        # check 
-        assert self.lambda_trainable or "lambda_" in kwargs, \
-            "if lambda is not trainable, you should provide a fixed lambda_ value"
-        assert self.temperature_trainable or "temperature" in kwargs, \
-            "if temperature is not trainable, you should provide a fixed temperature"
-        
-        self.k = None if self.k_trainable else kwargs["k"]
-        self.lambda_ = None if self.lambda_trainable else kwargs["lambda_"]
-        self.temperature = None if self.temperature_trainable else kwargs["temperature"]
 
     def set_num_updates(self, num_updates):
         """State from trainer to pass along to model at every update."""
@@ -48,47 +33,30 @@ class RobustCombiner(nn.Module):
 
         self.apply(_apply)
 
-    def get_knn_prob(self, vals, keys, distances, net_output, target, last_hidden, device="cuda:0"):
-        metak_outputs = self.meta_k_network(vals, distances, keys, net_output, target, last_hidden)
-        # TODO 
-        if self.lambda_trainable:
-            self.lambda_ = metak_outputs["lambda_net_output"]
-        
-        if self.temperature_trainable:
-            self.temperature = metak_outputs["temperature_net_output"]
-        
-        if self.k_trainable:
-            # generate mask_for_distance just for once
-            if not hasattr(self, "mask_for_distance") or self.mask_for_distance is None:
-                self.mask_for_distance = self._generate_mask_for_distance(self.max_k, device)
-            
-            k_probs = metak_outputs["k_net_output"]
-            B, S, K = vals.size()
-            R_K = k_probs.size(-1)
+    def get_knn_prob(
+        self,
+        tgt_index: torch.Tensor,
+        knn_dists: torch.Tensor,
+        knn_key_feature: torch.Tensor,
+        network_probs: torch.Tensor,
+        network_select_probs: torch.Tensor,
+        device="cuda:0"
+    ):
+        metak_outputs = self.meta_k_network(
+            tgt_index=tgt_index,
+            knn_dists=knn_dists,
+            knn_key_feature=knn_key_feature,
+            network_probs=network_probs,
+            network_select_probs=network_select_probs
+        )
 
-            distances = distances.unsqueeze(-2).expand(B, S, R_K, K)
-            distances = distances * self.mask_for_distance  # [B, S, R_K, K]
-            if self.temperature_trainable:
-                temperature = self.temperature.unsqueeze(-1).expand(B, S, R_K, K)
-            else:
-                temperature = self.temperature
-            distances = - distances / temperature
+        self.lambda_ = metak_outputs["knn_lambda"]
 
-            knn_weight = torch.softmax(distances, dim=-1)  # [B, S, R_K, K]
-            weight_sum_knn_weight = torch.matmul(k_probs.unsqueeze(-2), knn_weight).squeeze(-2).unsqueeze(-1)  # [B, S, K, 1]
-            knn_prob = torch.zeros(B, S, K, self.probability_dim, device=device)  # [B, S, K, Vocab Size]
-            # construct the knn 
-            knn_prob.scatter_(src=weight_sum_knn_weight.float(), index=vals.unsqueeze(-1), dim=-1)
-            knn_prob = knn_prob.sum(dim=-2)  # [Batch Size, seq len, vocab size]
-
-        else:
-            # if k is not trainable, the process of calculate knn probs is same as vanilla knn-mt
-            knn_prob = calculate_knn_prob(vals, distances, self.probability_dim,
-                        self.temperature, device=device)
+        knn_prob = torch.zeros(*network_probs.shape, device=device)
+        knn_prob.scatter_(dim=-1, index=tgt_index, src=metak_outputs["probs"])
 
         return knn_prob
-        
-    
+
     def get_combined_prob(self, knn_prob, neural_model_logit, log_probs=False):
         r""" get combined probs of knn_prob and neural_model_prob """
         return calculate_combined_prob(knn_prob, neural_model_logit, self.lambda_, log_probs)
@@ -137,16 +105,10 @@ class MetaKNetwork(nn.Module):
     def __init__(
         self,
         max_k = 32,
+        mid_size = 32,
         k_trainable = True,
         lambda_trainable = True,
         temperature_trainable = True,
-        k_net_hid_size = 32,
-        lambda_net_hid_size = 32,
-        temperature_net_hid_size = 32,
-        k_net_dropout_rate = 0.0,
-        lambda_net_dropout_rate = 0.0,
-        temperature_net_dropout_rate = 0.0,
-        label_count_as_feature = True,
         relative_label_count = False,
         device = "cuda:0",
         **kwargs,
@@ -156,12 +118,10 @@ class MetaKNetwork(nn.Module):
         self.k_trainable = k_trainable
         self.lambda_trainable = lambda_trainable
         self.temperature_trainable = temperature_trainable
-        self.label_count_as_feature = label_count_as_feature
         self.relative_label_count = relative_label_count
         self.device = device
         self.mask_for_label_count = None
-        self.mid_size = 32
-        self.num_updates = 0
+        self.mid_size = mid_size
 
         # Robust kNN-MT always uses the same configuration
         self.distance_func = nn.Sequential(
@@ -178,26 +138,31 @@ class MetaKNetwork(nn.Module):
             nn.Linear(self.mid_size, 2),
         )
 
-    def set_num_updates(self, num_updates):
-        """State from trainer to pass along to model at every update."""
-        self.num_updates = num_updates
-
-    def forward(self, vals, distances):
-        # TODO
-        if self.label_count_as_feature:
-            label_counts = self._get_label_count_segment(vals, relative=self.relative_label_count)
-            network_inputs = torch.cat((distances.detach(), label_counts.detach().float()), dim=-1)
-        else:
-            network_inputs = distances.detach()
+    def forward(
+        self,
+        tgt_index: torch.Tensor,
+        knn_dists: torch.Tensor,
+        knn_key_feature: torch.Tensor,
+        network_probs: torch.Tensor,
+        network_select_probs: torch.Tensor,
+    ):
+        B, S, K = knn_dists.size()
+        label_counts = self._get_label_count_segment(tgt_index, self.relative_label_count)
+        all_key_feature = torch.cat([knn_key_feature.log().unsqueeze(-1), network_select_probs.log().unsqueeze(-1)], -1)
+        top_prob, top_idx = torch.topk(network_probs, 8)
+        knn_feat = torch.cat([knn_dists, label_counts.float()], -1) 
         
-        results = {}
+        noise_logit = self.distance_fc1(all_key_feature).squeeze(-1)
+        sim_lambda = self.distance_func(torch.cat([top_prob.log(), knn_key_feature.log(), network_select_probs.log()], -1))
+        lambda_logit = self.distance_fc2(knn_feat.view(B, S, -1))
+        knn_lambda = torch.softmax(torch.cat([lambda_logit[:, :, :1], sim_lambda], -1), -1)[:, :, :1]
+        tempe = torch.sigmoid(lambda_logit[:, :, 1:2])
+        probs = torch.softmax(-knn_dists * tempe + noise_logit, -1) 
         
-        results["k_net_output"] = self.distance_to_k(network_inputs) if self.k_trainable else None
-        results["lambda_net_output"] = self.distance_to_lambda(network_inputs) if self.lambda_trainable else None
-        results["temperature_net_output"] = self.distance_to_temperature(network_inputs) \
-                    if self.temperature_trainable else None
-        
-        return results
+        return {
+            "probs": probs,
+            "knn_lambda": knn_lambda,
+        }
     
 
     def _get_label_count_segment(self, vals, relative=False):
@@ -227,7 +192,7 @@ class MetaKNetwork(nn.Module):
         retrieve_label_counts[:, :, :-1] -= 1
 
         if relative:
-            relative_label_counts[:, :, 1:] = relative_label_counts[:, :, 1:] - relative_label_counts[:, :, :-1]
+            retrieve_label_counts[:, :, 1:] = retrieve_label_counts[:, :, 1:] - retrieve_label_counts[:, :, :-1]
         
         return retrieve_label_counts
 
