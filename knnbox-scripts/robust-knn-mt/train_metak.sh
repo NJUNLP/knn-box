@@ -39,4 +39,7 @@ CUDA_VISIBLE_DEVICES=3 python $PROJECT_PATH/fairseq_cli/train.py $DATA_PATH \
 --knn-datastore-path $DATASTORE_LOAD_PATH \
 --knn-max-k $MAX_K \
 --knn-combiner-path $SAVE_DIR \
+--robust-training-sigma 0.01 \
+--robust-training-alpha0 1.0 \
+--robust-training-beta 1000 
 

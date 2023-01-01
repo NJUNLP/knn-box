@@ -51,22 +51,33 @@ class RobustKNNMT(TransformerModel):
                             help="the directory of save or load datastore")
         parser.add_argument("--knn-max-k", type=int, metavar="N", default=8,
                             help="The hyper-parameter max k of robust knn-mt")
-        parser.add_argument("--knn-k-type", choices=["fixed", "trainable"], default="trainable",
-                            help="trainable k or fixed k, if choose `fixed`, we use all the"
-                            "entries returned by retriever to calculate knn probs, "
-                            "i.e. directly use --knn-max-k as k")
-        parser.add_argument("--knn-lambda-type", choices=["fixed", "trainable"], default="trainable",
-                            help="trainable lambda or fixed lambda")
-        parser.add_argument("--knn-lambda", type=float, default=0.7,
-                            help="if use a fixed lambda, provide it with --knn-lambda")
-        parser.add_argument("--knn-temperature-type", choices=["fixed", "trainable"], default="trainable",
-                            help="trainable temperature or fixed temperature")
-        parser.add_argument("--knn-temperature", type=float, default=10,
-                            help="if use a fixed temperature, provide it with --knn-temperature")
+        
+        # ! Robust kNN-MT has k, lambda and temperature trainable
+        # parser.add_argument("--knn-k-type", choices=["fixed", "trainable"], default="trainable",
+        #                     help="trainable k or fixed k, if choose `fixed`, we use all the"
+        #                     "entries returned by retriever to calculate knn probs, "
+        #                     "i.e. directly use --knn-max-k as k")
+        # parser.add_argument("--knn-lambda-type", choices=["fixed", "trainable"], default="trainable",
+        #                     help="trainable lambda or fixed lambda")
+        # parser.add_argument("--knn-lambda", type=float, default=0.7,
+        #                     help="if use a fixed lambda, provide it with --knn-lambda")
+        # parser.add_argument("--knn-temperature-type", choices=["fixed", "trainable"], default="trainable",
+        #                     help="trainable temperature or fixed temperature")
+        # parser.add_argument("--knn-temperature", type=float, default=10,
+        #                     help="if use a fixed temperature, provide it with --knn-temperature")
         parser.add_argument("--knn-combiner-path", type=str, metavar="STR", default="/home/",
                             help="The directory to save/load robustCombiner")
         parser.add_argument("--build-faiss-index-with-cpu", action="store_true", default=False,
                             help="use faiss-cpu instead of faiss-gpu (useful when gpu memory is small)") 
+        
+        # ? hyper-params for robust training
+        parser.add_argument("--robust-training-sigma", type=float, default=0.01,
+                            help="the noise vector is sampled from a Gaussian distribution with variance sigma^2")
+        parser.add_argument("--robust-training-alpha0", type=float, default=1.0,
+                            help="alpha0 control the initial value of the perturbation ratio (alpha)")
+        parser.add_argument("--robust-training-beta", type=int, default=1000,
+                            help="beta control the declining speed of the perturbation ratio (alpha)")
+        
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):
         r"""
@@ -224,9 +235,9 @@ class RobustKNNMTDecoder(TransformerDecoder):
             target=net_output[1]["target"]
             last_hidden=net_output[1]["last_hidden"]
             # TODO These hyper-params will become arguments
-            random_rate = 1.0
-            noise_var = 0.01
-            e = 1000
+            random_rate = self.args.robust_alpha0
+            noise_var = self.args.robust_sigma
+            e = self.args.robust_beta
             random_rate = random_rate * math.exp((-self.update_num)/e)
 
             noise_mask = (tgt_index == target.unsqueeze(-1)).any(-1, True)
@@ -317,9 +328,6 @@ def transformer_wmt_en_de_big_t2t(args):
 @register_model_architecture("robust_knn_mt", "robust_knn_mt@transformer_wmt19_de_en")
 def transformer_wmt19_de_en(args):
     archs.transformer_wmt19_de_en(args)
-
-    
-
         
 
 from fairseq import metrics, utils
@@ -330,7 +338,7 @@ from fairseq.criterions.label_smoothed_cross_entropy import LabelSmoothedCrossEn
 class LabelSmoothedCrossEntropyCriterionForRobust(
     LabelSmoothedCrossEntropyCriterion
 ):
-
+    # ? label_smoothed_cross_entropy_for_robust is a CE-loss that passes target to model, which is required by robust training
     def forward(self, model, sample, reduce=True):
         """Compute the loss for the given sample.
 

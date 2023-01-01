@@ -135,7 +135,7 @@ class MetaKNetwork(nn.Module):
             nn.Tanh(),
             nn.Linear(4, 1), # ? W_3
         )
-        # ? WP network: S_{kNN}  &  WP network: T
+        # ? WP network: S_{kNN}  &  DC network: T
         self.distance_fc2 = nn.Sequential(
             nn.Linear(self.max_k * 2, self.mid_size), # ? W_2
             nn.Tanh(),
@@ -166,9 +166,6 @@ class MetaKNetwork(nn.Module):
         # ? T
         tempe = torch.sigmoid(lambda_logit[:, :, 1:2])
         probs = torch.softmax(-knn_dists * tempe + noise_logit, -1) 
-        
-        import pdb
-        # pdb.set_trace()
         
         return {
             "probs": probs,
