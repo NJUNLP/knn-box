@@ -77,6 +77,11 @@ class RobustKNNMT(TransformerModel):
                             help="alpha0 control the initial value of the perturbation ratio (alpha)")
         parser.add_argument("--robust-training-beta", type=int, default=1000,
                             help="beta control the declining speed of the perturbation ratio (alpha)")
+        # ? hyper-params for DC & WP networks
+        parser.add_argument("--robust-dc-hidden-size", type=int, default=4,
+                            help="the noise vector is sampled from a Gaussian distribution with variance sigma^2")
+        parser.add_argument("--robust-wp-hidden-size", type=int, default=32,
+                            help="beta control the declining speed of the perturbation ratio (alpha)")
         
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):
@@ -150,7 +155,11 @@ class RobustKNNMTDecoder(TransformerDecoder):
             self.datastore.load_faiss_index("keys")
             self.retriever = Retriever(datastore=self.datastore, k=args.knn_max_k)
             if args.knn_mode == "train_metak":
-                self.combiner = RobustCombiner(max_k=args.knn_max_k, probability_dim=len(dictionary)
+                self.combiner = RobustCombiner(
+                    max_k=args.knn_max_k, 
+                    midsize=args.robust_wp_hidden_size, 
+                    midsize_dc=args.robust_dc_hidden_size, 
+                    probability_dim=len(dictionary)
                 )
             elif args.knn_mode == "inference":
                 self.combiner = RobustCombiner.load(args.knn_combiner_path)
@@ -235,9 +244,9 @@ class RobustKNNMTDecoder(TransformerDecoder):
             target=net_output[1]["target"]
             last_hidden=net_output[1]["last_hidden"]
             # TODO These hyper-params will become arguments
-            random_rate = self.args.robust_alpha0
-            noise_var = self.args.robust_sigma
-            e = self.args.robust_beta
+            random_rate = self.args.robust_training_alpha0
+            noise_var = self.args.robust_training_sigma
+            e = self.args.robust_training_beta
             random_rate = random_rate * math.exp((-self.update_num)/e)
 
             noise_mask = (tgt_index == target.unsqueeze(-1)).any(-1, True)

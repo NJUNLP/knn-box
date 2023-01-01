@@ -13,6 +13,7 @@ class RobustCombiner(nn.Module):
                 max_k,
                 probability_dim,
                 midsize = 32,
+                midsize_dc = 4,
                 **kwargs
                 ):
         super().__init__()
@@ -20,12 +21,12 @@ class RobustCombiner(nn.Module):
         self.max_k = max_k
         self.probability_dim = probability_dim
         self.midsize = midsize
+        self.midsize_dc = midsize_dc
         self.kwargs = kwargs 
         self.mask_for_distance = None
 
-        # TODO will rename these networks
         self.meta_k_network = MetaKNetwork(max_k, 
-                    mid_size=self.midsize, **kwargs)
+                    midsize=self.midsize, midsize_dc=self.midsize_dc, **kwargs)
 
     def set_num_updates(self, num_updates):
         """State from trainer to pass along to model at every update."""
@@ -72,6 +73,7 @@ class RobustCombiner(nn.Module):
         config["max_k"] = self.max_k
         config["probability_dim"] = self.probability_dim
         config["midsize"] = self.midsize
+        config["midsize_dc"] = self.midsize_dc
         for k, v in self.kwargs.items():
             config[k] = v
         write_config(path, config)
@@ -106,7 +108,8 @@ class MetaKNetwork(nn.Module):
     def __init__(
         self,
         max_k = 32,
-        mid_size = 32,
+        midsize = 32,
+        midsize_dc = 4,
         k_trainable = True,
         lambda_trainable = True,
         temperature_trainable = True,
@@ -122,7 +125,8 @@ class MetaKNetwork(nn.Module):
         self.relative_label_count = relative_label_count
         self.device = device
         self.mask_for_label_count = None
-        self.mid_size = mid_size
+        self.midsize = midsize
+        self.midsize_dc = midsize_dc
 
         # Robust kNN-MT always uses the same configuration
         # ? WP network: S_{NMT}
@@ -131,15 +135,15 @@ class MetaKNetwork(nn.Module):
         )
         # ? DC network: c_k
         self.distance_fc1 = nn.Sequential(
-            nn.Linear(2, 4), # ? W_4
+            nn.Linear(2, self.midsize_dc), # ? W_4
             nn.Tanh(),
-            nn.Linear(4, 1), # ? W_3
+            nn.Linear(self.midsize_dc, 1), # ? W_3
         )
-        # ? WP network: S_{kNN}  &  DC network: T
+        # ? WP network: S_{kNN}  &  WP network: T
         self.distance_fc2 = nn.Sequential(
-            nn.Linear(self.max_k * 2, self.mid_size), # ? W_2
+            nn.Linear(self.max_k * 2, self.midsize), # ? W_2
             nn.Tanh(),
-            nn.Linear(self.mid_size, 2), # ? [W_1, W_5]
+            nn.Linear(self.midsize, 2), # ? [W_1, W_5]
         )
 
     def forward(
