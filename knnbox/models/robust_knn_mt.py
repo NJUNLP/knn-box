@@ -70,7 +70,7 @@ class RobustKNNMT(TransformerModel):
         parser.add_argument("--build-faiss-index-with-cpu", action="store_true", default=False,
                             help="use faiss-cpu instead of faiss-gpu (useful when gpu memory is small)") 
         
-        # ? hyper-params for robust training
+        # ? hyper-params for robust training 
         parser.add_argument("--robust-training-sigma", type=float, default=0.01,
                             help="the noise vector is sampled from a Gaussian distribution with variance sigma^2")
         parser.add_argument("--robust-training-alpha0", type=float, default=1.0,
@@ -79,9 +79,11 @@ class RobustKNNMT(TransformerModel):
                             help="beta control the declining speed of the perturbation ratio (alpha)")
         # ? hyper-params for DC & WP networks
         parser.add_argument("--robust-dc-hidden-size", type=int, default=4,
-                            help="the noise vector is sampled from a Gaussian distribution with variance sigma^2")
+                            help="the hidden size of DC network")
         parser.add_argument("--robust-wp-hidden-size", type=int, default=32,
-                            help="beta control the declining speed of the perturbation ratio (alpha)")
+                            help="the hidden size of WP network")
+        parser.add_argument("--robust-wp-topk", type=int, default=8,
+                            help="WP network uses the k highest probabilities of the NMT distribution as input")
         
     @classmethod
     def build_decoder(cls, args, tgt_dict, embed_tokens):
@@ -159,6 +161,7 @@ class RobustKNNMTDecoder(TransformerDecoder):
                     max_k=args.knn_max_k, 
                     midsize=args.robust_wp_hidden_size, 
                     midsize_dc=args.robust_dc_hidden_size, 
+                    topk_wp=args.robust_wp_topk, 
                     probability_dim=len(dictionary)
                 )
             elif args.knn_mode == "inference":

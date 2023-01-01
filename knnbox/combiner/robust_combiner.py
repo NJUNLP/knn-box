@@ -14,6 +14,7 @@ class RobustCombiner(nn.Module):
                 probability_dim,
                 midsize = 32,
                 midsize_dc = 4,
+                topk_wp = 8,
                 **kwargs
                 ):
         super().__init__()
@@ -22,11 +23,17 @@ class RobustCombiner(nn.Module):
         self.probability_dim = probability_dim
         self.midsize = midsize
         self.midsize_dc = midsize_dc
+        self.topk_wp = topk_wp
         self.kwargs = kwargs 
         self.mask_for_distance = None
 
-        self.meta_k_network = MetaKNetwork(max_k, 
-                    midsize=self.midsize, midsize_dc=self.midsize_dc, **kwargs)
+        self.meta_k_network = MetaKNetwork(
+            max_k=self.max_k,
+            midsize=self.midsize,
+            midsize_dc=self.midsize_dc,
+            topk_wp=self.topk_wp,
+            **kwargs
+        )
 
     def set_num_updates(self, num_updates):
         """State from trainer to pass along to model at every update."""
@@ -110,6 +117,7 @@ class MetaKNetwork(nn.Module):
         max_k = 32,
         midsize = 32,
         midsize_dc = 4,
+        topk_wp = 8,
         k_trainable = True,
         lambda_trainable = True,
         temperature_trainable = True,
@@ -127,11 +135,12 @@ class MetaKNetwork(nn.Module):
         self.mask_for_label_count = None
         self.midsize = midsize
         self.midsize_dc = midsize_dc
+        self.topk_wp = topk_wp
 
         # Robust kNN-MT always uses the same configuration
         # ? WP network: S_{NMT}
         self.distance_func = nn.Sequential(
-            nn.Linear(self.max_k * 2 + 8, 1), # ? W_6
+            nn.Linear(self.max_k * 2 + self.topk_wp, 1), # ? W_6
         )
         # ? DC network: c_k
         self.distance_fc1 = nn.Sequential(
@@ -157,7 +166,7 @@ class MetaKNetwork(nn.Module):
         B, S, K = knn_dists.size()
         label_counts = self._get_label_count_segment(tgt_index, self.relative_label_count)
         all_key_feature = torch.cat([knn_key_feature.log().unsqueeze(-1), network_select_probs.log().unsqueeze(-1)], -1)
-        top_prob, top_idx = torch.topk(network_probs, 8)
+        top_prob, top_idx = torch.topk(network_probs, self.topk_wp)
         knn_feat = torch.cat([knn_dists, label_counts.float()], -1) 
         # ? c_k
         noise_logit = self.distance_fc1(all_key_feature).squeeze(-1)
