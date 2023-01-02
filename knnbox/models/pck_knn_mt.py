@@ -37,7 +37,7 @@ class PckKNNMT(AdaptiveKNNMT):
         add pck knn-mt related args here
         """
         AdaptiveKNNMT.add_args(parser)
-        parser.add_argument("--knn-reduct-dim", type=int, metavar="N", default=256,
+        parser.add_argument("--knn-reduct-dim", type=int, metavar="N", default=64,
                             help="reducted dimension of datastore")
     
     @classmethod
@@ -72,14 +72,12 @@ class PckKNNMTDecoder(TransformerDecoder):
                 # python file (when traverse the dataset and `add value`)
                 global_vars()["datastore"] = PckDatastore(
                         path=args.knn_datastore_path,
-                        reduction_network_input_dim=args.decoder_embed_dim,
-                        reduction_network_output_dim=args.knn_reduct_dim,
                         dictionary_len=len(self.dictionary),
-                        )  
+                    )  
             self.datastore = global_vars()["datastore"]
         
         else:
-            self.datastore = PckDatastore.load(args.knn_datastore_path, load_list=["vals"])
+            self.datastore = PckDatastore.load(args.knn_datastore_path, load_list=["vals"], load_network=True)
             self.datastore.load_faiss_index("keys")
             self.retriever = Retriever(datastore=self.datastore, k=args.knn_max_k)
             if args.knn_mode == "train_metak":

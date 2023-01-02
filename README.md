@@ -58,9 +58,7 @@ Users can easily develope different kNN-MT models by customizing three modules. 
 * [ Adaptive Nearest Neighbor Machine Translation (Zheng et al., 2021)](https://aclanthology.org/2021.acl-short.47.pdf)
 * [ Learning Kernel-Smoothed Machine Translation with Retrieved Examples (Jiang et al., 2021)](https://aclanthology.org/2021.emnlp-main.579.pdf)
 * [ Efficient Machine Translation Domain Adaptation (PH Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
-<!--
 * [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., 2022)](https://aclanthology.org/2022.acl-long.154.pdf)
--->
 <details>
 <summary><b><ins>Preparation: download pretrained models and dataset</ins></b></summary>
 
@@ -143,27 +141,33 @@ bash inference.sh
 
 </details>
 
-<!--
 <details>
 <summary><b><ins>Run pck knn-mt</ins></b></summary>
 
 implementation of [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., 2022)](https://aclanthology.org/2022.acl-long.154.pdf)
 
 To translate using pck knn-mt, execute the following command:
-
 ```bash
 cd knnbox-scripts/pck-knn-mt
 # step 1. build datastore 
 bash build_datastore.sh
-# step 2. prune datastore (size and dimension)
-bash prune_datastore.sh
-# step 3. train meta-k network
+# step 2. train reduction network
+bash train_reduct_network.sh
+# step 3. reduct datastore's key dimension using trained network
+bash reduct_datastore_dim.sh
+# step 4. train meta-k network
 bash train_metak.sh
-# step 4. inference
+# step 5. inference
 bash inference.sh
 ```
+
+[optional] In addition to reducing dimensions, you can use the method in the paper to reduce the number of entries in the datastore.
+```bash
+(after step 1.)
+bash prune_datastore_size.sh
+```
+
 </details>
--->
 <img src="https://s1.ax1x.com/2022/11/22/z3Cpiq.png" width="80%" alt="design">
 
 

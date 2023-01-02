@@ -9,11 +9,11 @@ export OMP_WAIT_POLICY=PASSIVE
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
 DATA_PATH=$PROJECT_PATH/data-bin/it
-DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/pck/it
-COMBINER_LOAD_DIR=$PROJECT_PATH/save-models/combiner/pck/it
-MAX_K=8
+DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/pck/it_dim64
+COMBINER_LOAD_DIR=$PROJECT_PATH/save-models/combiner/pck/it_dim64
+MAX_K=4
 
-CUDA_VISIBLE_DEVICES=5 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
 --dataset-impl mmap \

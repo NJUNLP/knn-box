@@ -11,9 +11,9 @@ BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
 DATA_PATH=$PROJECT_PATH/data-bin/medical
 PCA_DIM=256
 MERGE_NEIGHBORS_N=2
-DATASTORE_SAVE_PATH=$PROJECT_PATH/datastore/greedy-merge/medical_merge$MERGE_NEIGHBORS_N
+DATASTORE_SAVE_PATH=$PROJECT_PATH/datastore/greedy-merge/medical_pca{$PCA_DIM}_merge{$MERGE_NEIGHBORS_N}
 
-CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/knnbox-scripts/common/validate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/validate.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
 --model-overrides "{'eval_bleu': False, 'required_seq_len_multiple':1, 'load_alignments': False}" \
@@ -27,8 +27,7 @@ CUDA_VISIBLE_DEVICES=7 python $PROJECT_PATH/knnbox-scripts/common/validate.py $D
 --knn-mode build_datastore \
 --do-merge --merge-neighbors-n $MERGE_NEIGHBORS_N \
 --knn-datastore-path  $DATASTORE_SAVE_PATH \
-
-# --do-pca --pca-dim $PCA_DIM \
+--do-pca --pca-dim $PCA_DIM \
 
 
 

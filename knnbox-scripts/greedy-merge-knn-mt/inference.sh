@@ -16,11 +16,10 @@ export OMP_WAIT_POLICY=PASSIVE
 
 PROJECT_PATH=$( cd -- "$( dirname -- "$ BASH_SOURCE[0]}" )" &> /dev/null && pwd )/../..
 BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
-DATA_PATH=$PROJECT_PATH/data-bin/koran
-# DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/greedy-merge/koran_pca256_merge2
-DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/vanilla/koran
+DATA_PATH=$PROJECT_PATH/data-bin/medical
+DATASTORE_LOAD_PATH=$PROJECT_PATH/datastore/greedy-merge/medical_pca256_merge2
 
-CUDA_VISIBLE_DEVICES=6 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
 --dataset-impl mmap \
@@ -34,9 +33,8 @@ CUDA_VISIBLE_DEVICES=6 python $PROJECT_PATH/knnbox-scripts/common/generate.py $D
 --arch greedy_merge_knn_mt@transformer_wmt19_de_en \
 --knn-mode inference \
 --knn-datastore-path $DATASTORE_LOAD_PATH \
---knn-k 8 \
---knn-lambda 0.7 \
---knn-temperature 100.0 \
-
-# --enable-cache --cache-threshold 6.0 \
-# --use-merge-weights \
+--knn-k 4 \
+--knn-lambda 0.8 \
+--knn-temperature 10.0 \
+--enable-cache --cache-threshold 6.0 \
+--use-merge-weights \

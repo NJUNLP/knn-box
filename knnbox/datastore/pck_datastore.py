@@ -29,28 +29,31 @@ class PckDatastore(Datastore, nn.Module):
     def __init__(
         self,
         path,
-        reduction_network_input_dim,
-        reduction_network_output_dim,
         dictionary_len,
+        reduction_network_input_dim = None,
+        reduction_network_output_dim = None,
         datas=None,
         **kwargs,
         ):
         Datastore.__init__(self, path, datas, **kwargs)
-        nn.Module.__init__(self)
-        
-        # Create a network for network reduction
-        self.reduction_network = ReductionNetwork(
-                dictionary_len, 
-                reduction_network_input_dim,
-                reduction_network_output_dim,
-        ) 
-        self.reduction_network_input_dim = reduction_network_input_dim
-        self.reduction_network_output_dim = reduction_network_output_dim
+        nn.Module.__init__(self)      
         self.dictionary_len = dictionary_len
 
+        # create a network for dimension reduction when need
+        if reduction_network_input_dim and reduction_network_output_dim and dictionary_len:
+            self.reduction_network = ReductionNetwork(
+                    dictionary_len, 
+                    reduction_network_input_dim,
+                    reduction_network_output_dim,
+                    train_mode=False,
+            ) 
+            self.reduction_network_input_dim = reduction_network_input_dim
+            self.reduction_network_output_dim = reduction_network_output_dim
 
-    def prune(
+
+    def prune_size(
         self,
+        output_path,
         n_of_4_gram = 4, # we save 4 gram info, but we can use less gram to prune
         prune_style = "random",
         sample_rate = 0.1, 
@@ -61,7 +64,6 @@ class PckDatastore(Datastore, nn.Module):
         start_time = time.time()
 
         # ppl mask
-        ## TODO: padding idx 应该为1，这里作者写成了0
         ppl_mask = (self.datas["ids_4_gram"].data != 0).astype(np.float32) # padding
         r'''e.g., for a phrase 'it is a lovely dog' (which ends with 'dog'),
         we collect normalized ppls of all n-grams:
@@ -189,31 +191,20 @@ class PckDatastore(Datastore, nn.Module):
         pool.close()
         pool.join()
 
-        # remove old keys and vals
-
+        output_datastore = Datastore(path=output_path)
         for res in results:
             vals_l, dbidx_l, tgt_lens_l, src_lens_l = res.get()
             vals_l = [val for vals in vals_l for val in vals]
             keys_l = [self["keys"].data[dbidx] for dbidxs in dbidx_l for dbidx in dbidxs]
             vals = np.array(vals_l, dtype=self["vals"].data.dtype)
             keys = np.array(keys_l, dtype=self["keys"].data.dtype) 
-            self["new_keys"].add(keys)
-            self["new_vals"].add(vals)
-        self["keys"].drop_redundant()
-        self["vals"].drop_redundant()
 
-        os.remove(os.path.join(self.path, "keys.npy"))
-        os.remove(os.path.join(self.path, "vals.npy"))
-        os.rename(os.path.join(self.path, "new_keys.npy"), os.path.join(self.path, "keys.npy"))
-        os.rename(os.path.join(self.path, "new_vals.npy"), os.path.join(self.path, "vals.npy"))
-        self["keys"] = self["new_keys"]
-        self["vals"] = self["new_vals"]
-        del self["new_keys"]
-        del self["new_vals"]
-        self["keys"].filename = os.path.join(self.path, "keys.npy")
-        self["vals"].filename = os.path.join(self.path, "vals.npy")
+            output_datastore["keys"].add(keys)
+            output_datastore["vals"].add(vals)
+        output_datastore.dump()
+        output_datastore.build_faiss_index("keys")
         print("Prune Finshed: origined size->%d pruned size->%d" % 
-                (tgt_entropy.shape[0], self["keys"].shape[0]))
+                (tgt_entropy.shape[0], output_datastore["keys"].shape[0]))
 
     @classmethod
     def random_sample(cls, keys, nums):
@@ -389,22 +380,39 @@ class PckDatastore(Datastore, nn.Module):
             lr,
             min_lr,
             patience,
-            epoch,
-            device="cuda:0",
+            max_update,
+            log_path,
+            valid_interval,
+            device = "cuda:0",
             ):
         r""" a simple function to train reduction network"""
         assert self.training, "Pytorch is not on trainning mode"
+        assert max_update > valid_interval, "max_update must bigger than valid_interval"
+        tb_writer = None # tensorboardX
+        try:
+            from tensorboardX import SummaryWriter
+            tb_writer = SummaryWriter(log_path)
+        except:
+            print("[train reduction network] " 
+            "tensorboardX not Installed. we won't record the log info for you!")
         dataloader = DataLoader(
             dataset = triplet_dataset,
             batch_size = batch_size,
             shuffle = True,
             num_workers = 2,
-            drop_last = True,
+            drop_last = False,
+        )
+        valid_dataloader = DataLoader(
+            dataset = triplet_dataset,
+            batch_size = batch_size,
+            shuffle = True,
+            num_workers = 2,
+            drop_last = False,
         )
         print("[train reduction network] Start Training Reduction Network...")
         self.reduction_network.to(device)
-        self.reduction_network.train() # train mode, enable dropout
-        optimizer = optim.Adam(self.reduction_network.parameters(), lr)
+        self.reduction_network.train() # switch to train mode, enable dropout
+        optimizer = optim.Adam(self.reduction_network.parameters(), lr, betas=(0.9, 0.98))
         # lerning scheduler
         scheduler = lr_scheduler.ReduceLROnPlateau(
                     optimizer,
@@ -413,39 +421,68 @@ class PckDatastore(Datastore, nn.Module):
                     min_lr = min_lr,
                     factor = 0.5, 
                     )
-        min_loss = 1e7
+        min_valid_loss = 1e7
         best_checkpoint = None
-        no_improved_count = 0
-        pbar = tqdm(total=epoch)
-        for e in range(epoch):
-            pbar.update(1)
-            losses = []
+        no_improved_cnt = 0
+        pbar = tqdm(total=max_update)
+        update_step = 0
+        valid_losses = []
+        valid_cnt = 0
+        break_flag = False
+
+        while True:
+            if break_flag:
+                break
             for data in dataloader:
+                if update_step >= max_update:
+                    break_flag = True
+                    break
+                # validdation
+                if (update_step + 1) % valid_interval == 0:
+                    valid_losses = []
+                    for valid_data in valid_dataloader:                
+                        with torch.no_grad():
+                            valid_loss = \
+                                self.reduction_network(valid_data, dr_loss_ratio, nce_loss_ratio, wp_loss_ratio, device)
+                            valid_losses.append(valid_loss.item())
+                    avg_valid_loss = sum(valid_losses) / len(valid_losses)
+                    if tb_writer:
+                        tb_writer.add_scalar("valid_loss", avg_valid_loss, update_step)
+                    print("valid loss after update %d steps: %f" %(update_step, avg_valid_loss))
+                    # save checkpoint when get a better loss
+                    if avg_valid_loss < min_valid_loss:
+                        print("%f is a new best valid loss" % avg_valid_loss)
+                        best_checkpoint = self.reduction_network.state_dict()
+                        min_valid_loss = avg_valid_loss
+                        no_improved_cnt = 0
+                    else:
+                        no_improved_cnt += 1
+                        print("not improved for %d / %d validations." % (no_improved_cnt, patience))
+                        if no_improved_cnt >= patience:
+                            print("\nEarly stoped because not improved for %d validations." % no_improved_cnt)
+                            break_flag = True
+                            break
+                    scheduler.step(avg_valid_loss)
+                    update_step += 1
+                    pbar.update(1)
+                
+                # train
+                train_loss = self.reduction_network(data, dr_loss_ratio, nce_loss_ratio, wp_loss_ratio, device)
+                if tb_writer:
+                    tb_writer.add_scalar("train_loss", train_loss.item(), update_step)
+                pbar.update(1)
+                pbar.set_postfix(step=update_step, loss=train_loss.item())
                 optimizer.zero_grad()
-                loss = self.reduction_network(data, dr_loss_ratio, nce_loss_ratio, wp_loss_ratio, device)
-                losses.append(loss.data)
-                loss.backward()
-                # clip the norm
+                train_loss.backward()
                 nn.utils.clip_grad_norm_(self.reduction_network.parameters(), 1.0)
                 optimizer.step()
-            average_loss = (sum(losses)/len(losses)).item()
-            # adjust learning rate 
-            scheduler.step(average_loss)
-            pbar.set_postfix(epoch=e, average_loss=average_loss)
-            if average_loss < min_loss:
-                # save the checkpoint
-                best_checkpoint = self.reduction_network.state_dict()
-                min_loss = average_loss
-                no_improved_count = 0
-            else:
-                no_improved_count += 1
-                if no_improved_count >= patience:
-                    print("Early stoped beacuse not improved for %d" % no_improved_count)
-                    break
-        
+                update_step += 1
+
+        # save the best checkpoint 
         self.reduction_network.load_state_dict(best_checkpoint)
-        print("best checkpoint with loss %f ." % min_loss)
+        print("best checkpoint with valid loss %f ." % min_valid_loss)
         print("Reduction Network Training Finished.")
+
 
     def vector_reduct(self, x, device="cuda:0"):
         r""" reduct the input x with reduct network """
@@ -457,26 +494,27 @@ class PckDatastore(Datastore, nn.Module):
             reducted_x = self.reduction_network.reduction_layer(x)
         return reducted_x
 
-    def reconstruct_keys_with_reduction_network(self, batch_size=100):
+
+    def reconstruct_keys_with_reduction_network(self, output_dir, batch_size=100):
         print("[reduct dimension] Start reduct keys' dimension using trained network")
         start_idx = 0
         key_size = self["keys"].size
-        new_keys = Memmap(os.path.join(self.path, "new_keys.npy"), mode="w+")
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        new_keys = Memmap(os.path.join(output_dir, "keys.npy"), mode="w+")
         while start_idx < key_size:
             end_idx = min(start_idx+batch_size, key_size)
             original_key = self["keys"].data[start_idx:end_idx]
             original_key = torch.tensor(original_key, dtype=torch.float)
             reduct_key = self.vector_reduct(original_key)
             new_keys.add(reduct_key.half())
-            start_idx = end_idx
-        self["keys"] = new_keys  
-        os.remove(os.path.join(self.path, "keys.npy"))
-        os.rename(os.path.join(self.path, "new_keys.npy"), os.path.join(self.path, "keys.npy"))
-        self["keys"].filename = os.path.join(self.path, "keys.npy")
+            start_idx = end_idx 
         print("[reduct dimension] Done.")
+        return new_keys
+
 
     @classmethod
-    def load(cls, path, load_list):
+    def load(cls, path, load_list, load_network):
         r"""
         load the datastore from the `path` folder
 
@@ -502,18 +540,27 @@ class PckDatastore(Datastore, nn.Module):
                                 dtype=_info["dtype"],
                                 mode="r+",
                             )
-        dictionary_len = config["dictionary_len"] 
-        reduction_network_input_dim = config["reduction_network_input_dim"]
-        reduction_network_output_dim = config["reduction_network_output_dim"]
-        pck_datastore = cls(path, 
-                            reduction_network_input_dim,
-                            reduction_network_output_dim,
-                            dictionary_len,
-                            datas)
-        pck_datastore.load_state_dict(torch.load(os.path.join(path, "reduct_network.pt")), strict=False)
+        dictionary_len = config["dictionary_len"]
+        if load_network: 
+            reduction_network_input_dim = config["reduction_network_input_dim"]
+            reduction_network_output_dim = config["reduction_network_output_dim"]
+            pck_datastore = cls(path, 
+                                dictionary_len,
+                                reduction_network_input_dim,
+                                reduction_network_output_dim,
+                                datas,
+                            )
+            pck_datastore.load_state_dict(torch.load(os.path.join(path, "reduct_network.pt")), strict=False)
+        else:
+            pck_datastore = cls(path,
+                                dictionary_len,
+                                None,
+                                None,
+                                datas,
+                            )
         return pck_datastore
 
-    def dump(self, verbose=True, dump_list=None):
+    def dump(self, verbose=True, dump_list=None, dump_network=False):
         r"""
         store the datastore files and config file to disk.
         
@@ -542,12 +589,12 @@ class PckDatastore(Datastore, nn.Module):
         
         # some useful info
         config["dictionary_len"] = self.dictionary_len
-        config["reduction_network_input_dim"] = self.reduction_network_input_dim
-        config["reduction_network_output_dim"] = self.reduction_network_output_dim
+        if dump_network:
+            config["reduction_network_input_dim"] = self.reduction_network_input_dim
+            config["reduction_network_output_dim"] = self.reduction_network_output_dim
+            # save checkpoint
+            torch.save(self.state_dict(), os.path.join(self.path, "reduct_network.pt"))
         write_config(self.path, config)
-
-        # save checkpoint
-        torch.save(self.state_dict(), os.path.join(self.path, "reduct_network.pt"))
 
 
     def set_target(self, x):
@@ -633,7 +680,7 @@ class ReductionNetwork(nn.Module):
 
             nce_lprobs = torch.nn.functional.log_softmax(-nce_distance, dim=-1) # the larger, the worse
             nce_target = torch.arange(end=batch_size).to(device)
-            nce_loss = label_smoothed_nll_loss(nce_lprobs, nce_target, reduce=True)
+            nce_loss = label_smoothed_nll_loss(nce_lprobs, nce_target, 1e-3, reduce=True)
             nce_loss = nce_loss / float(batch_size)
 
 
@@ -642,12 +689,11 @@ class ReductionNetwork(nn.Module):
         if wp_loss_ratio != 0.0:
             logits = self.word_predict_layer(reducted_data)
             word_probs = nn.functional.log_softmax(logits, dim=-1)
-            word_predict_loss = label_smoothed_nll_loss(word_probs, stack_ids, reduce=True)
+            word_predict_loss = label_smoothed_nll_loss(word_probs, stack_ids, 1e-3, reduce=True)
             wp_loss = word_predict_loss / float(batch_size)
         
         loss = dr_loss_ratio * dr_loss + nce_loss_ratio * nce_loss + wp_loss_ratio * wp_loss; 
         return loss
-
 
 
 
@@ -671,6 +717,9 @@ class TripletDatastoreSamplingDataset(Dataset):
                         size=int(sample_rate*db_vals.shape[0]), replace=False)
             sample_db_keys = db_keys[random_sample]
             sample_db_vals = db_vals[random_sample]
+        else:
+            sample_db_keys = db_keys
+            sample_db_vals = db_vals 
 
         vocab_freq = [0 for _ in range(dictionary_len)]
         key_list = [[] for _ in range(dictionary_len)]
@@ -764,7 +813,7 @@ class TripletDatastoreSamplingDataset(Dataset):
             ]
             '''
 
-            print('we get %d clusters' % len(self.key_list))
+            print('\nwe get %d clusters' % len(self.key_list))
 
             # # post-processing
             # for i in range(len(self.key_list)):
