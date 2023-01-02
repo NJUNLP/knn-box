@@ -141,7 +141,7 @@ multirun
 outputs
 
 # knn-box
-data-bin/*
-datastore/*
-pretrain-models/*
-save-models/*
+data-bin
+datastore
+pretrain-models
+save-models
