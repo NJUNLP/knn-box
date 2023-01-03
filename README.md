@@ -54,12 +54,7 @@ Basically, there are two steps for runing a kNN-MT model: building datastore and
 Users can easily develope different kNN-MT models by customizing three modules. This toolkit also provide example implementations of various popular kNN-MT models (listed below) and push-button scripts to run them, enabling researchers conveniently reproducing their experiment results:
 
 <!-- In this toolkit, we provide reference implementations of various papers: -->
-* [ Nearest Neighbor Machine Translation (Khandelwal et al., ICLR'2021)](https://openreview.net/pdf?id=7wCBOfJ8hJM) 
-* [ Adaptive Nearest Neighbor Machine Translation (Zheng et al., ACL'2021)](https://aclanthology.org/2021.acl-short.47.pdf)
-* [ Learning Kernel-Smoothed Machine Translation with Retrieved Examples (Jiang et al., EMNLP'2021)](https://aclanthology.org/2021.emnlp-main.579.pdf)
-* [ Efficient Machine Translation Domain Adaptation (Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
-* [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., ACL'2022)](https://aclanthology.org/2022.acl-long.154.pdf)
-* [ What Knowledge Is Needed? Towards Explainable Memory for kNN-MT Domain Adaptation (Zhu et al., arXiv'2022)](https://arxiv.org/pdf/2211.04052v2.pdf)
+<!-- * [ What Knowledge Is Needed? Towards Explainable Memory for kNN-MT Domain Adaptation (Zhu et al., arXiv'2022)](https://arxiv.org/pdf/2211.04052v2.pdf) -->
 <details>
 <summary><b><ins>Preparation: download pretrained models and dataset</ins></b></summary>
 
@@ -84,6 +79,8 @@ bash inference.sh
 <details>
 <summary><b><ins>Run vanilla knn-mt</ins></b></summary>
 
+Implementation of [ Nearest Neighbor Machine Translation (Khandelwal et al., ICLR'2021)](https://openreview.net/pdf?id=7wCBOfJ8hJM) 
+
 To translate using knn-mt, execute the following command:
 
 ```bash
@@ -96,6 +93,8 @@ bash inference.sh
 </details>
 <details>
 <summary><b><ins>Run adaptive knn-mt</ins></b></summary>
+
+Implementation of [ Adaptive Nearest Neighbor Machine Translation (Zheng et al., ACL'2021)](https://aclanthology.org/2021.acl-short.47.pdf)
 
 To translate using adaptive knn-mt, execute the following command:
 
@@ -112,6 +111,8 @@ bash inference.sh
 <details>
 <summary><b><ins>Run kernel smoothed knn-mt</ins></b></summary>
 
+Implementation of [ Learning Kernel-Smoothed Machine Translation with Retrieved Examples (Jiang et al., EMNLP'2021)](https://aclanthology.org/2021.emnlp-main.579.pdf)
+
 To translate using kernel smoothed knn-mt, execute the following command:
 
 ```bash
@@ -127,7 +128,7 @@ bash inference.sh
 <details>
 <summary><b><ins>Run greedy merge knn-mt</ins></b></summary>
 
-implementation of [ Efficient Machine Translation Domain Adaptation (PH Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
+Implementation of [ Efficient Machine Translation Domain Adaptation (PH Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
 
 To translate using Greedy Merge knn-mt, execute the following command:
 
@@ -145,7 +146,7 @@ bash inference.sh
 <details>
 <summary><b><ins>Run pck knn-mt</ins></b></summary>
 
-implementation of [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., 2022)](https://aclanthology.org/2022.acl-long.154.pdf)
+Implementation of [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., 2022)](https://aclanthology.org/2022.acl-long.154.pdf)
 
 To translate using pck knn-mt, execute the following command:
 ```bash
@@ -196,6 +197,6 @@ Here are the [results (BLEU and speed)](knnbox/tutorials/markdowns/benchmark.md)
 
 
 ## Contributor
-[Qianfeng Zhao](http://nlp.nju.edu.cn/homepage/people.html) :email: qianfeng@smail.nju.edu.cn
-[Yunzhe Lv](http://nlp.nju.edu.cn/homepage/people.html) :email: lvyz@smail.nju.ed.cn
-[Wenhao Zhu](https://owennju.github.io) :email: zhuwh@smail.nju.edu.cn
+[Qianfeng Zhao](http://nlp.nju.edu.cn/homepage/people.html) :email: qianfeng@smail.nju.edu.cn  
+[Yunzhe Lv](http://nlp.nju.edu.cn/homepage/people.html) :email: lvyz@smail.nju.ed.cn   
+[Wenhao Zhu](https://owennju.github.io) :email: zhuwh@smail.nju.edu.cn 
