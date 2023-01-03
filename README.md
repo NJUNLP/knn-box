@@ -15,7 +15,7 @@ kNN-box is an open-source toolkit to build kNN-MT models. We take inspiration fr
 * :dart: easy-to-use: a few lines of code to deploy a kNN-MT model
 * :telescope: research-oriented: provide implementations of various papers
 * :building_construction: extensible: easy to develope new kNN-MT models with our toolkit.
-* :bar_chart:visualized: the whole translation process of the kNN-MT can be visualized
+* :bar_chart: visualized: the whole translation process of the kNN-MT can be visualized
 
 ## Requirements and Installation
 * python >= 3.7
@@ -47,18 +47,19 @@ conda install faiss-gpu -c pytorch # For CUDA
 
 ## Overview
 Basically, there are two steps for runing a kNN-MT model: building datastore and translating with datastore. In this toolkit, we unify different kNN-MT variants into a single framework, albeit they manipulate datastore in different ways. Specifically, the framework consists of three modules (basic class):
-* **datastore**: save translation knowledge in key-values pairs
+* **datastore**: save translation knowledge as key-values pairs
 * **retriever**: retrieve useful translation knowledge from the datastore
 * **combiner**: produce final prediction based on retrieval results and NMT model
 
 Users can easily develope different kNN-MT models by customizing three modules. This toolkit also provide example implementations of various popular kNN-MT models (listed below) and push-button scripts to run them, enabling researchers conveniently reproducing their experiment results:
 
 <!-- In this toolkit, we provide reference implementations of various papers: -->
-* [ Nearest Neighbor Machine Translation (Khandelwal et al., 2021)](https://openreview.net/pdf?id=7wCBOfJ8hJM)
-* [ Adaptive Nearest Neighbor Machine Translation (Zheng et al., 2021)](https://aclanthology.org/2021.acl-short.47.pdf)
-* [ Learning Kernel-Smoothed Machine Translation with Retrieved Examples (Jiang et al., 2021)](https://aclanthology.org/2021.emnlp-main.579.pdf)
-* [ Efficient Machine Translation Domain Adaptation (PH Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
-* [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., 2022)](https://aclanthology.org/2022.acl-long.154.pdf)
+* [ Nearest Neighbor Machine Translation (Khandelwal et al., ICLR'2021)](https://openreview.net/pdf?id=7wCBOfJ8hJM) 
+* [ Adaptive Nearest Neighbor Machine Translation (Zheng et al., ACL'2021)](https://aclanthology.org/2021.acl-short.47.pdf)
+* [ Learning Kernel-Smoothed Machine Translation with Retrieved Examples (Jiang et al., EMNLP'2021)](https://aclanthology.org/2021.emnlp-main.579.pdf)
+* [ Efficient Machine Translation Domain Adaptation (Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
+* [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., ACL'2022)](https://aclanthology.org/2022.acl-long.154.pdf)
+* [ What Knowledge Is Needed? Towards Explainable Memory for kNN-MT Domain Adaptation (Zhu et al., arXiv'2022)](https://arxiv.org/pdf/2211.04052v2.pdf)
 <details>
 <summary><b><ins>Preparation: download pretrained models and dataset</ins></b></summary>
 
@@ -188,11 +189,13 @@ bash start_app.sh
 
 ![](https://s1.ax1x.com/2022/11/25/zY3djf.png)
 
+<!--
 ## Benchmark
+Here are the [results (BLEU and speed)](knnbox/tutorials/markdowns/benchmark.md) obtained by using the knnbox toolkit to reproduce popular papers. -->
 
-Here are the [results (BLEU and speed)](knnbox/tutorials/markdowns/benchmark.md) obtained by using the knnbox toolkit to reproduce popular papers.
 
 
 ## Contributor
-Qianfeng Zhao: qianfeng@smail.nju.edu.cn
-Wenhao Zhu: zhuwh@smail.nju.edu.cn
+[Qianfeng Zhao](http://nlp.nju.edu.cn/homepage/people.html) :email: qianfeng@smail.nju.edu.cn
+[Yunzhe Lv](http://nlp.nju.edu.cn/homepage/people.html) :email: lvyz@smail.nju.ed.cn
+[Wenhao Zhu](https://owennju.github.io) :email: zhuwh@smail.nju.edu.cn
