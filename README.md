@@ -140,9 +140,6 @@ bash build_datastore_and_prune.sh
 bash inference.sh
 ```
 </details>
-
-</details>
-
 <details>
 <summary><b><ins>Efficient Cluster-Based k-Nearest-Neighbor Machine Translation</ins></b></summary>
 
@@ -170,6 +167,24 @@ bash prune_datastore_size.sh
 ```
 
 </details>
+<details>
+<summary><b><ins>Towards Robust k-Nearest-Neighbor Machine Translation</ins></b></summary>
+
+Implementation of [ Towards Robust k-Nearest-Neighbor Machine Translation (Jiang et al., EMNLP'2022)](https://arxiv.org/pdf/2210.08808.pdf)
+
+To translate using robust knn-mt, execute the following command:
+
+```bash
+cd knnbox-scripts/robust-knn-mt
+# step 1. build datastore
+bash build_datastore.sh
+# step 2. train meta-k network
+bash train_metak.sh
+# step 3. inference
+bash inference.sh
+```
+</details>
+
 <img src="https://s1.ax1x.com/2022/11/22/z3Cpiq.png" width="80%" alt="design">
 
 
