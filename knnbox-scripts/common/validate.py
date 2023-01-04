@@ -81,7 +81,7 @@ def main(args, override_args=None):
     knn_type = args.arch.split("@")[0]
     if "datastore" not in global_vars():
         # create suitable datastore class if not exists
-        if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "kernel_smoothed_knn_mt", "vanilla_knn_mt_visual"]:
+        if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "kernel_smoothed_knn_mt", "vanilla_knn_mt_visual", "robust_knn_mt"]:
             global_vars()["datastore"] = Datastore(path=args.knn_datastore_path)
         if knn_type == "greedy_merge_knn_mt":
             global_vars()["datastore"] = GreedyMergeDatastore(path=args.knn_datastore_path)
@@ -132,7 +132,7 @@ def main(args, override_args=None):
             sample = utils.move_to_cuda(sample) if use_cuda else sample
 
             ## knnbox related code start >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-            if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "greedy_merge_knn_mt", "kernel_smoothed_knn_mt", "plac_knn_mt"]:
+            if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "greedy_merge_knn_mt", "kernel_smoothed_knn_mt", "plac_knn_mt", "robust_knn_mt"]:
                 non_pad_tokens, mask = filter_pad_tokens(sample["target"])
                 datastore["vals"].add(non_pad_tokens)
                 datastore.set_pad_mask(mask)
@@ -187,7 +187,7 @@ def main(args, override_args=None):
     if use_cuda:
         torch.cuda.empty_cache()    # release gpu memory
 
-    if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "kernel_smoothed_knn_mt", "vanilla_knn_mt_visual", "plac_knn_mt"]:
+    if knn_type in ["vanilla_knn_mt", "adaptive_knn_mt", "kernel_smoothed_knn_mt", "vanilla_knn_mt_visual", "plac_knn_mt", "robust_knn_mt"]:
         datastore.dump()    # dump to disk
         datastore.build_faiss_index("keys", use_gpu=(not args.build_faiss_index_with_cpu))   # build faiss index
     elif knn_type == "greedy_merge_knn_mt":
