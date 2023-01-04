@@ -68,7 +68,7 @@ bash prepare_dataset_and_model.sh
 > use bash instead of sh. If you still have problem running the script, you can manually download the [wmt19 de-en single model](https://github.com/facebookresearch/fairseq/blob/main/examples/wmt19/README.md) and [multi-domain de-en dataset](https://drive.google.com/file/d/18TXCWzoKuxWKHAaCRgddd6Ub64klrVhV/view), and put them into correct directory (you can refer to the path in the script).
 </details>
 <details>
-<summary><b><ins>Run base neural machine translation model (our baseline)</ins></b></summary>
+<summary><b><ins>base neural machine translation model (our baseline)</ins></b></summary>
 To translate using base neural model, execute the following command:
 
 ```bash
@@ -77,11 +77,11 @@ bash inference.sh
 ```
 </details>
 <details>
-<summary><b><ins>Run vanilla knn-mt</ins></b></summary>
+<summary><b><ins>Nearest Neighbor Machine Translation</ins></b></summary>
 
 Implementation of [ Nearest Neighbor Machine Translation (Khandelwal et al., ICLR'2021)](https://openreview.net/pdf?id=7wCBOfJ8hJM) 
 
-To translate using knn-mt, execute the following command:
+To translate using vanilla knn-mt, execute the following command:
 
 ```bash
 cd knnbox-scripts/vanilla-knn-mt
@@ -92,7 +92,7 @@ bash inference.sh
 ```
 </details>
 <details>
-<summary><b><ins>Run adaptive knn-mt</ins></b></summary>
+<summary><b><ins>Adaptive Nearest Neighbor Machine Translation</ins></b></summary>
 
 Implementation of [ Adaptive Nearest Neighbor Machine Translation (Zheng et al., ACL'2021)](https://aclanthology.org/2021.acl-short.47.pdf)
 
@@ -109,7 +109,7 @@ bash inference.sh
 ```
 </details>
 <details>
-<summary><b><ins>Run kernel smoothed knn-mt</ins></b></summary>
+<summary><b><ins>Learning Kernel-Smoothed Machine Translation with Retrieved Examples</ins></b></summary>
 
 Implementation of [ Learning Kernel-Smoothed Machine Translation with Retrieved Examples (Jiang et al., EMNLP'2021)](https://aclanthology.org/2021.emnlp-main.579.pdf)
 
@@ -126,7 +126,7 @@ bash inference.sh
 ```
 </details>
 <details>
-<summary><b><ins>Run greedy merge knn-mt</ins></b></summary>
+<summary><b><ins>Efficient Machine Translation Domain Adaptation</ins></b></summary>
 
 Implementation of [ Efficient Machine Translation Domain Adaptation (PH Martins et al., 2022) ](https://aclanthology.org/2022.spanlp-1.3.pdf)
 
@@ -144,7 +144,7 @@ bash inference.sh
 </details>
 
 <details>
-<summary><b><ins>Run pck knn-mt</ins></b></summary>
+<summary><b><ins>Efficient Cluster-Based k-Nearest-Neighbor Machine Translation</ins></b></summary>
 
 Implementation of [ Efficient Cluster-Based k-Nearest-Neighbor Machine Translation (Wang et al., 2022)](https://aclanthology.org/2022.acl-long.154.pdf)
 
