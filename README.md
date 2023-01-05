@@ -184,6 +184,23 @@ bash train_metak.sh
 bash inference.sh
 ```
 </details>
+<!-- <details>
+<summary><b><ins>What Knowledge Is Needed? Towards Explainable Memory for kNN-MT Domain Adaptation</ins></b></summary>
+
+Implementation of [ What Knowledge Is Needed? Towards Explainable Memory for kNN-MT Domain Adaptation (Zhu et al., 2022)](https://arxiv.org/pdf/2211.04052.pdf)
+
+PLAC is a datastore pruning method based on MT-model's knowledge. To prune a full datastore (vanilla or dimension-reduced), execute the following command:
+
+```bash
+cd knnbox-scripts/plac-knn-mt
+# step 1. save MT-model predictions
+bash save_mt_pred.sh
+# step 2. save prunable indexes
+bash save_drop_index.sh
+# step 3. prune a full datastore and save the pruned datastore
+bash prune_datastore.sh
+```
+</details> -->
 
 <img src="https://s1.ax1x.com/2022/11/22/z3Cpiq.png" width="80%" alt="design">
 
