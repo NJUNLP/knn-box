@@ -184,7 +184,7 @@ bash train_metak.sh
 bash inference.sh
 ```
 </details>
-<!-- <details>
+<details>
 <summary><b><ins>What Knowledge Is Needed? Towards Explainable Memory for kNN-MT Domain Adaptation</ins></b></summary>
 
 Implementation of [ What Knowledge Is Needed? Towards Explainable Memory for kNN-MT Domain Adaptation (Zhu et al., 2022)](https://arxiv.org/pdf/2211.04052.pdf)
@@ -200,7 +200,7 @@ bash save_drop_index.sh
 # step 3. prune a full datastore and save the pruned datastore
 bash prune_datastore.sh
 ```
-</details> -->
+</details>
 
 <img src="https://s1.ax1x.com/2022/11/22/z3Cpiq.png" width="80%" alt="design">
 
