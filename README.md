@@ -140,9 +140,6 @@ bash build_datastore_and_prune.sh
 bash inference.sh
 ```
 </details>
-
-</details>
-
 <details>
 <summary><b><ins>Efficient Cluster-Based k-Nearest-Neighbor Machine Translation</ins></b></summary>
 
@@ -170,6 +167,41 @@ bash prune_datastore_size.sh
 ```
 
 </details>
+<details>
+<summary><b><ins>Towards Robust k-Nearest-Neighbor Machine Translation</ins></b></summary>
+
+Implementation of [ Towards Robust k-Nearest-Neighbor Machine Translation (Jiang et al., EMNLP'2022)](https://arxiv.org/pdf/2210.08808.pdf)
+
+To translate using robust knn-mt, execute the following command:
+
+```bash
+cd knnbox-scripts/robust-knn-mt
+# step 1. build datastore
+bash build_datastore.sh
+# step 2. train meta-k network
+bash train_metak.sh
+# step 3. inference
+bash inference.sh
+```
+</details>
+<details>
+<summary><b><ins>What Knowledge Is Needed? Towards Explainable Memory for kNN-MT Domain Adaptation</ins></b></summary>
+
+Implementation of [ What Knowledge Is Needed? Towards Explainable Memory for kNN-MT Domain Adaptation (Zhu et al., 2022)](https://arxiv.org/pdf/2211.04052.pdf)
+
+PLAC is a datastore pruning method based on MT-model's knowledge. To prune a full datastore (vanilla or dimension-reduced), execute the following command:
+
+```bash
+cd knnbox-scripts/plac-knn-mt
+# step 1. save MT-model predictions
+bash save_mt_pred.sh
+# step 2. save prunable indexes
+bash save_drop_index.sh
+# step 3. prune a full datastore and save the pruned datastore
+bash prune_datastore.sh
+```
+</details>
+
 <img src="https://s1.ax1x.com/2022/11/22/z3Cpiq.png" width="80%" alt="design">
 
 
