@@ -24,13 +24,13 @@ and pretrained WMT19 De-En winner model. If you are interested in the general do
 
 ### BLEU Score
 
-|     model \ domain     |  IT   | Medical | Koran |  Law  | General Domain (Avg) |
-| :--------------------: | :---: | :-----: | :---: | :---: | :------------------: |
-|        base NMT        | 38.35 |  40.06  | 16.26 | 45.48 |        37.16         |
-|     vanilla kNN-MT     | 45.88 |  54.13  | 20.51 | 61.09 |        11.98         |
-|    adaptive kNN-MT     | 47.41 |  56.15  | 20.20 | 63.01 |        32.70         |
-| kernel smoothed kNN-MT | 47.81 |  56.67  | 20.16 | 63.27 |        32.60         |
-|     robust kNN-MT      | 48.46 |  57.24  | 20.55 | 63.69 |        34.48         |
+|     model \ domain     |  IT   | Medical | Koran |  Law  |
+| :--------------------: | :---: | :-----: | :---: | :---: |
+|        base NMT        | 38.35 |  40.06  | 16.26 | 45.48 |
+|     vanilla kNN-MT     | 45.88 |  54.13  | 20.51 | 61.09 |
+|    adaptive kNN-MT     | 47.41 |  56.15  | 20.20 | 63.01 |
+| kernel smoothed kNN-MT | 47.81 |  56.67  | 20.16 | 63.27 |
+|     robust kNN-MT      | 48.46 |  57.24  | 20.55 | 63.69 |
 
 > Note that due to the unavoidable randomness in constructing the faiss index, there will be slight differences between our results and the paper's, and our results will not be exactly the same as yours.
 
