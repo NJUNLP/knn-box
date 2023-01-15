@@ -220,6 +220,8 @@ vim model_configs.yml
 bash start_app.sh
 ```
 
+Note: Regist your own tokenize function in src/tokenizer.py and then use it in model_configs.yml if necessary.
+
 ![](https://s1.ax1x.com/2022/11/25/zY3djf.png)
 
 <!--

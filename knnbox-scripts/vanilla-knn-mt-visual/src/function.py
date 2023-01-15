@@ -301,7 +301,7 @@ def get_knn_model_resource(
         "--arch", arch,
         "--knn-mode", knn_mode,
         "--knn-k", "8",
-        "--knn-lambda", "0.7",
+        "--knn-lambda", "0.0",
         "--knn-temperature", "10.0",
         "--user-dir", user_dir,
         "--knn-datastore-path", knn_datastore_path,
@@ -314,7 +314,7 @@ def get_knn_model_resource(
         "--target-lang", target_lang,
         "--max-tokens", max_tokens,
         "--scoring", scoring,
-        "--tokenizer", tokenizer,
+        "--tokenizer", "space",  # we have already tokenize in "app.py", here we use space tokenizer is enough
         "--task", "translation",
         "--bpe", bpe,
         "--bpe-codes", bpe_codes,
@@ -374,7 +374,6 @@ def get_knn_model_resource(
         strict=(args.checkpoint_shard_count == 1),
         num_shards=args.checkpoint_shard_count,
     )
-      
     # Set dictionaries
     src_dict = task.source_dictionary
     tgt_dict = task.target_dictionary
@@ -389,6 +388,7 @@ def get_knn_model_resource(
 
     # Initialize generator
     generator = knn_build_generator(models, args, tgt_dict)
+    # generator = task.build_generator(models, args)
 
     # Handle tokenization and BPE
     tokenizer = encoders.build_tokenizer(args)
@@ -446,7 +446,6 @@ def translate_using_knn_model(inputs, resource, k, lambda_, temperature):
             x = tokenizer.decode(x)
         return x
 
-    start_id = 0
     results = []
     for batch in make_batches(inputs, args, task, max_positions, encode_fn):
         bsz = batch.src_tokens.size(0)
@@ -485,7 +484,7 @@ def translate_using_knn_model(inputs, resource, k, lambda_, temperature):
             constraints = list_constraints[i]
             results.append(
                 (
-                    start_id + id,
+                    id,
                     src_tokens_i,
                     hypos,
                     {
@@ -508,16 +507,17 @@ def translate_using_knn_model(inputs, resource, k, lambda_, temperature):
     #         #         )
     #         #     )
 
+    # src_tokens
+    src_text = [src_dict[_id] for _id in src_tokens[0]]
+    print(" ".join(src_text))
     # Process top predictions
     assert len(results) == 1, "interactive mode, should have only one sentence"
     top_hypo = results[0][2][0] # store the top probability translations
-    # update running id_ counter
-    start_id += len(inputs)
+
 
     useful_results = {}
     useful_results["hypo_tokens"] = top_hypo["tokens"]
     useful_results["hypo_tokens_str"] = [tgt_dict[i] for i in top_hypo["tokens"]] 
-
     # only return 100 top element for simple, sort by prob
     sorted_neural_prob, sorted_neural_indices =  torch.sort(top_hypo["neural_probs"], dim=-1, descending=True)
     sorted_neural_candis = [[tgt_dict[idx] for idx in line[:100]] for line in sorted_neural_indices]
@@ -539,11 +539,11 @@ def translate_using_knn_model(inputs, resource, k, lambda_, temperature):
     useful_results["knn_neighbors_keys"] = pca.transform(top_hypo["knn_neighbors_keys"].view(-1, keys_shape[-1]).cpu().numpy()).reshape(*keys_shape[:-1],2)
     useful_results["knn_neighbors_values"] = [[tgt_dict[idx] for idx in line[:100]] for line in top_hypo["knn_neighbors_values"].cpu().numpy()]
     useful_results["query_point"] = pca.transform(top_hypo["query_point"].cpu().numpy())
-    # we found faiss l2 distance is not accurate, so deprcate it and recompute the l2
-    # useful_results["knn_l2_distance"] = top_hypo["knn_l2_distance"].cpu().numpy()
-    # recompute the l2 distance
-    useful_results["knn_l2_distance"] = torch.cdist(top_hypo["query_point"].unsqueeze(1), 
-                top_hypo["knn_neighbors_keys"], p=2.0).squeeze(1).cpu().numpy()
+    # faiss l2 distance, not accurate
+    useful_results["knn_l2_distance"] = top_hypo["knn_l2_distance"].cpu().numpy()
+    # optional: recompute the l2 distance
+    # useful_results["knn_l2_distance"] = torch.cdist(top_hypo["query_point"].unsqueeze(1), 
+    #             top_hypo["knn_neighbors_keys"], p=2.0).squeeze(1).cpu().numpy()
     
     # sentence id and token postions
     sentence_ids = top_hypo["knn_sentence_ids"]

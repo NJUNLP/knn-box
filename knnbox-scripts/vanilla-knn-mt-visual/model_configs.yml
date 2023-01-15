@@ -1,15 +1,16 @@
 # The knn-model's config using by web page
 # Arch now only support vanilla_knn_mt_visual@xxxxxx
 # xxxxx is decide by your base model's arch
+
 DE-EN[it]:
-  data_path: /data1/zhaoqf/0101/knn-box/data-bin/it
-  model_path: /data1/zhaoqf/0101/knn-box/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
+  data_path: /home/demo/knn-box/data-bin/it
+  model_path: /home/demo/knn-box/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
   arch: vanilla_knn_mt_visual@transformer_wmt19_de_en
   knn_mode: inference
-  knn_datastore_path: /data1/zhaoqf/0101/knn-box/datastore/vanilla-visual/it
-  user_dir: /data1/zhaoqf/0101/knn-box/knnbox/models
+  knn_datastore_path: /home/demo/knn-box/datastore/vanilla-visual/it
+  user_dir: /home/demo/knn-box/knnbox/models
   bpe: fastbpe
-  bpe_codes: /data1/zhaoqf/0101/knn-box/pretrain-models/wmt19.de-en/ende30k.fastbpe.code
+  bpe_codes: /home/demo/knn-box/pretrain-models/wmt19.de-en/ende30k.fastbpe.code
   beam: "4"
   lenpen: "0.6"
   max_len_a: "1.2"
@@ -18,17 +19,17 @@ DE-EN[it]:
   target_lang: en
   max_tokens: "1024"
   scoring: sacrebleu
-  tokenizer: moses
+  tokenizer: moses-de
 
 ZH-EN[laws]:
-  data_path: /data1/zhaoqf/0101/knn-box/data-bin/zh-en-laws
-  model_path: /data1/zhaoqf/0101/knn-box/pretrain-models/zh-en/pretrained.pt
-  arch: vanilla_knn_mt_visual@transformer_wmt_en_de
+  data_path: /home/demo/knn-box/data-bin/zh-en-laws
+  model_path: /home/demo/knn-box/pretrain-models/zh-en/pretrained.pt
+  arch: vanilla_knn_mt_visual@transformer_zh_en
   knn_mode: inference
-  knn_datastore_path: /data1/zhaoqf/0101/knn-box/datastore/vanilla-visual/zh-en-laws
-  user_dir: /data1/zhaoqf/0101/knn-box/knnbox/models
+  knn_datastore_path: /home/demo/knn-box/datastore/vanilla-visual/zh-en-laws
+  user_dir: /home/demo/knn-box/knnbox/models
   bpe: fastbpe
-  bpe_codes: /data1/zhaoqf/0101/knn-box/pretrain-models/zh-en/codes.zh
+  bpe_codes: /home/demo/knn-box/pretrain-models/zh-en/codes.zh
   beam: "4"
   lenpen: "0.6"
   max_len_a: "1.2"
@@ -37,4 +38,6 @@ ZH-EN[laws]:
   target_lang: en
   max_tokens: "1024"
   scoring: sacrebleu
-  tokenizer: moses
+  tokenizer: jieba
+
+

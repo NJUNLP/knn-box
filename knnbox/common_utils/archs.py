@@ -98,3 +98,8 @@ def transformer_wmt19_de_en(args):
     )
     args.share_all_embeddings = getattr(args, "share_all_embeddings", True)
     transformer_wmt_en_de_big(args)
+
+def transformer_zh_en(args):
+   args.encoder_normalize_before = getattr(args, "encoder_normalize_before", True)
+   args.decoder_normalize_before = getattr(args, "decoder_normalize_before", True)
+   base_architecture(args)

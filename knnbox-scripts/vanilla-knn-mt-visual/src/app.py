@@ -11,6 +11,7 @@ from function import get_icon, get_spatial_distribution, \
     get_value_frequency, display_partial_records, get_knn_model_resource, translate_using_knn_model, \
         get_config, get_datastore_cfgs \
 
+from tokenizer import TOKENIZER_FUNCTIONS
 
 APP_TITLE = "knn-playground"
 st.set_page_config(
@@ -27,7 +28,7 @@ def knn_main():
 
 
     with st.sidebar:
-        with st.expander("ℹ️ - About this app", expanded=True):
+        with st.expander("⚡ About this app", expanded=True):
             st.write(
         """     
 -   Powered by [knn-box](https://github.com/NJUNLP/knn-box) toolkit.
@@ -42,11 +43,11 @@ def knn_main():
         with st.form("ds_path"):
             path_of_datasotre = st.text_input(
                 label="Paste the path of datastore below",
-                value="/data1/zhaoqf/0101/knn-box/datastore/vanilla/koran"
+                value="/home/demo/knn-box/datastore/vanilla-visual/zh-en-laws"
             )
             path_of_dictionary = st.text_input(
                 label="Paste the path of target language dictionary",
-                value="/data1/zhaoqf/0101/knn-box/data-bin/koran/dict.en.txt",
+                value="/home/demo/knn-box/data-bin/zh-en-laws/dict.zh.txt",
             )
             path_submit = st.form_submit_button(label="✨ Get me the profile!")
         
@@ -122,6 +123,8 @@ def knn_main():
             # prepare model and generator
     
             resource = get_knn_model_resource(**cfgs[lang_pair])
+            # choose tokenizer
+            doc = TOKENIZER_FUNCTIONS[cfgs[lang_pair]["tokenizer"]](doc)
             nmt_translation_results = translate_using_knn_model(doc, resource,
                     k = 1, lambda_=0.0, temperature=1.0
             )
@@ -133,6 +136,7 @@ def knn_main():
 
             st.subheader("NMT: ")
             st.markdown(nmt_translations)
+
             st.subheader("kNN-NMT: ")
             tabs = st.tabs(translations)
 
@@ -169,10 +173,12 @@ def knn_main():
                     
                     df = df.format(format_dictionary)
                     st.table(df)
-                    
+
 
                     chart = get_neighbors_chart(translation_results, idx)
                     st.altair_chart(chart,use_container_width=True)
+
+            st.info("1. The distance shown in the graph after PCA does not necessarily align with the actual vector distance, you should refer the actual distance (hover your mouse over the point) \n 2. Becasue of beam search, the token with the highest probability in a single step will not necessarily be chosen")       
 
 
 def get_neighbors_chart(translation_results, page_idx):

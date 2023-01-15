@@ -182,7 +182,9 @@ def transformer_wmt_en_de_big_t2t(args):
 def transformer_wmt19_de_en(args):
     archs.transformer_wmt19_de_en(args)
 
-    
+@register_model_architecture("vanilla_knn_mt", "vanilla_knn_mt@transformer_zh_en")
+def transformer_zh_en(args):
+    archs.transformer_zh_en(args)
     
 
         
