@@ -76,7 +76,7 @@ and pretrained WMT19 De-En winner model. If you are interested in the general do
 
   we follow the configuration of [robust kNN-MT](https://github.com/DeepLearnXMU/Robust-knn-mt)
 
-  | domain                   |  notation  |  IT  | Medical | Koran | Law  |
+  | param                    |  notation  |  IT  | Medical | Koran | Law  |
   | :----------------------- | :--------: | :--: | :-----: | :---: | :--: |
   | --knn-max-k              |    $K$     |  8   |    8    |   8   |  8   |
   | --robust-training-sigma  |  $\sigma$  | 0.01 |  0.01   | 0.01  | 0.01 |
