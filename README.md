@@ -4,18 +4,24 @@
 kNN-box is an open-source toolkit to build kNN-MT models. We take inspiration from the code of [kNN-LM](https://github.com/urvashik/knnlm) and [adaptive kNN-MT](https://github.com/zhengxxn/adaptive-knn-mt), and develope this more extensible toolkit based on [fairseq](https://github.com/facebookresearch/fairseq). Via kNN-box, users can easily implement different kNN-MT baseline models and further develope new models.
 
 - [:card\_file\_box: kNN-box](#card_file_box-knn-box)
+  - [What's New](#whats-new)
   - [Features](#features)
   - [Requirements and Installation](#requirements-and-installation)
   - [Overview](#overview)
   - [Visualization](#visualization)
-  - [Benchmark](#benchmark)
   - [Contributor](#contributor)
+
+
+## What's New
+- *February 2023* [Released code implementation of Simple and Scalable Nearest Neighbor Machine Translation](https://openreview.net/forum?id=uu1GBD9SlLe)
+
 
 ## Features
 * :dart: easy-to-use: a few lines of code to deploy a kNN-MT model
 * :telescope: research-oriented: provide implementations of various papers
 * :building_construction: extensible: easy to develope new kNN-MT models with our toolkit.
 * :bar_chart: visualized: the whole translation process of the kNN-MT can be visualized
+
 
 ## Requirements and Installation
 * python >= 3.7
@@ -202,6 +208,31 @@ bash prune_datastore.sh
 ```
 </details>
 
+<details>
+<summary><b><ins>Simple and Scalable Nearest Neighbor Machine Translation</ins></b></summary>
+
+Implementation of [Simple and Scalable Nearest Neighbor Machine Translation](https://openreview.net/forum?id=uu1GBD9SlLe)
+
+To translate using sk-mt, excute the following command:
+
+```bash
+cd knnbox-scripts/simple-scalable-knn-mt
+# step 1. download elastic search
+bash download_elasticsearch.sh
+# step 2. start elastic search service on port 9200
+./elasticsearch-8.6.1/bin/elasticsearch
+# step 3. create elasticsearch index for corpus
+bash create_elasticsearch_index.sh
+# step 4. inference
+bash inference.sh
+```
+
+If there is an elasticsearch-related error when executing the script, you may need to open 
+`./elaticsearch-8.6.1/config/elasticsearch.yml` and disable the security features:
+```
+xpack.security.enabled: false
+```
+</details>
 <img src="https://s1.ax1x.com/2022/11/22/z3Cpiq.png" width="80%" alt="design">
 
 

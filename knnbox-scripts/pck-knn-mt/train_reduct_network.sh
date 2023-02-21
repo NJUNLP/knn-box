@@ -15,7 +15,7 @@ DR_LOSS_RATIO=0.0
 NCE_LOSS_RATIO=1.0
 WP_LOSS_RATIO=0.0
 BATCH_SIZE=1024
-MAX_UPDATE=100000   # Koran: 50000 IT: 100000 Medical: 150000 Law: 3000000
+MAX_UPDATE=100000   # Koran: 50000 IT: 100000 Medical: 150000 Law: 300000
 
 CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/pck-knn-mt/train_reduct_network.py \
 --datastore-load-path $DATASTORE_LOAD_PATH \
