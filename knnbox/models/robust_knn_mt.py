@@ -229,62 +229,61 @@ class RobustKNNMTDecoder(TransformerDecoder):
         step 2.
             combine the knn probability with NMT's probability 
         """
-        network_probs = utils.softmax(net_output[0], dim=-1, onnx_trace=self.onnx_trace)
-        knn_dists = self.retriever.results["distances"]
-        tgt_index = self.retriever.results["vals"]
-        knn_key = self.retriever.results["keys"]
-        queries = self.retriever.results["query"]
-        
-        knn_dists = torch.sum((knn_key - queries.unsqueeze(-2).detach()) ** 2, dim=-1)   
-        knn_dists, new_index = torch.sort(knn_dists, dim=-1)
-        tgt_index = tgt_index.gather(dim=-1, index=new_index)
-        knn_key = knn_key.gather(dim=-2, index=new_index.unsqueeze(-1).expand(knn_key.shape))
-        
-        B, S, K = knn_dists.size()
-        network_select_probs = network_probs.gather(index=tgt_index, dim=-1) # [batch, seq len, K]
-        
-        if self.training:
-            target=net_output[1]["target"]
-            last_hidden=net_output[1]["last_hidden"]
-            # TODO These hyper-params will become arguments
-            random_rate = self.args.robust_training_alpha0
-            noise_var = self.args.robust_training_sigma
-            e = self.args.robust_training_beta
-            random_rate = random_rate * math.exp((-self.update_num)/e)
+        if self.args.knn_mode == "inference" or self.args.knn_mode == "train_metak":
+            network_probs = utils.softmax(net_output[0], dim=-1, onnx_trace=self.onnx_trace)
+            knn_dists = self.retriever.results["distances"]
+            tgt_index = self.retriever.results["vals"]
+            knn_key = self.retriever.results["keys"]
+            queries = self.retriever.results["query"]
+            
+            knn_dists = torch.sum((knn_key - queries.unsqueeze(-2).detach()) ** 2, dim=-1)   
+            knn_dists, new_index = torch.sort(knn_dists, dim=-1)
+            tgt_index = tgt_index.gather(dim=-1, index=new_index)
+            knn_key = knn_key.gather(dim=-2, index=new_index.unsqueeze(-1).expand(knn_key.shape))
+            
+            B, S, K = knn_dists.size()
+            network_select_probs = network_probs.gather(index=tgt_index, dim=-1) # [batch, seq len, K]
+            
+            if self.training:
+                target=net_output[1]["target"]
+                last_hidden=net_output[1]["last_hidden"]
+                random_rate = self.args.robust_training_alpha0
+                noise_var = self.args.robust_training_sigma
+                e = self.args.robust_training_beta
+                random_rate = random_rate * math.exp((-self.update_num)/e)
 
-            noise_mask = (tgt_index == target.unsqueeze(-1)).any(-1, True)
-            rand_mask = ((torch.rand(B, S, 1).cuda() < random_rate) & (target.unsqueeze(-1) != 1)).long()
-            rand_mask2 = ((torch.rand(B, S, 1).cuda() < random_rate) & (target.unsqueeze(-1) != 1) & ~noise_mask).float()
-                              
-            with torch.no_grad():
-                # add perturbation
-                knn_key = knn_key + torch.randn_like(knn_key) * rand_mask.unsqueeze(-1) * noise_var
-                new_key = last_hidden + torch.randn_like(last_hidden) * noise_var
-                noise_knn_key = torch.cat([new_key.unsqueeze(-2), knn_key.float()[:, :, :-1, :]], -2)
-                noise_tgt_index = torch.cat([target.unsqueeze(-1), tgt_index[:, :, :-1]], -1)               
-                tgt_index = noise_tgt_index * rand_mask2.long() + tgt_index * (1 - rand_mask2.long())
-                knn_key = noise_knn_key * rand_mask2.unsqueeze(-1) + knn_key * (1 - rand_mask2.unsqueeze(-1))
-                
+                noise_mask = (tgt_index == target.unsqueeze(-1)).any(-1, True)
+                rand_mask = ((torch.rand(B, S, 1).cuda() < random_rate) & (target.unsqueeze(-1) != 1)).long()
+                rand_mask2 = ((torch.rand(B, S, 1).cuda() < random_rate) & (target.unsqueeze(-1) != 1) & ~noise_mask).float()
+                                
+                with torch.no_grad():
+                    # add perturbation
+                    knn_key = knn_key + torch.randn_like(knn_key) * rand_mask.unsqueeze(-1) * noise_var
+                    new_key = last_hidden + torch.randn_like(last_hidden) * noise_var
+                    noise_knn_key = torch.cat([new_key.unsqueeze(-2), knn_key.float()[:, :, :-1, :]], -2)
+                    noise_tgt_index = torch.cat([target.unsqueeze(-1), tgt_index[:, :, :-1]], -1)               
+                    tgt_index = noise_tgt_index * rand_mask2.long() + tgt_index * (1 - rand_mask2.long())
+                    knn_key = noise_knn_key * rand_mask2.unsqueeze(-1) + knn_key * (1 - rand_mask2.unsqueeze(-1))
+                    
+                    knn_probs = utils.softmax(self.output_layer(knn_key.float()), dim=-1, onnx_trace=self.onnx_trace) # B, S, K, V
+                    knn_key_feature = knn_probs.gather(-1, index=tgt_index.unsqueeze(-1)).squeeze(-1)
+                    noise_knn_dists = torch.sum((knn_key - last_hidden.unsqueeze(-2).detach()) ** 2, dim=3)
+                    dup_knn_dists = noise_knn_dists 
+
+                    # sort the distance again
+                    new_dists, dist_index = torch.sort(dup_knn_dists, dim=-1)
+                    new_index = dist_index
+
+                    # update the input
+                    knn_dists = new_dists
+                    tgt_index = tgt_index.gather(-1, new_index)
+                    network_select_probs = network_probs.gather(index=tgt_index, dim=-1)
+                    knn_key_feature = knn_key_feature.gather(-1, new_index)
+                    
+            else:
                 knn_probs = utils.softmax(self.output_layer(knn_key.float()), dim=-1, onnx_trace=self.onnx_trace) # B, S, K, V
                 knn_key_feature = knn_probs.gather(-1, index=tgt_index.unsqueeze(-1)).squeeze(-1)
-                noise_knn_dists = torch.sum((knn_key - last_hidden.unsqueeze(-2).detach()) ** 2, dim=3)
-                dup_knn_dists = noise_knn_dists 
 
-                # sort the distance again
-                new_dists, dist_index = torch.sort(dup_knn_dists, dim=-1)
-                new_index = dist_index
-
-                # update the input
-                knn_dists = new_dists
-                tgt_index = tgt_index.gather(-1, new_index)
-                network_select_probs = network_probs.gather(index=tgt_index, dim=-1)
-                knn_key_feature = knn_key_feature.gather(-1, new_index)
-                
-        else:
-            knn_probs = utils.softmax(self.output_layer(knn_key.float()), dim=-1, onnx_trace=self.onnx_trace) # B, S, K, V
-            knn_key_feature = knn_probs.gather(-1, index=tgt_index.unsqueeze(-1)).squeeze(-1)
-            
-        if self.args.knn_mode == "inference" or self.args.knn_mode == "train_metak":
             knn_prob = self.combiner.get_knn_prob(
                 tgt_index=tgt_index,
                 knn_dists=knn_dists,
