@@ -229,7 +229,7 @@ If there is an elasticsearch-related error when executing the script, you may ne
 xpack.security.enabled: false
 ```
 </details>
-<img src="https://s1.ax1x.com/2023/02/25/ppppWtK.png" width="80%" alt="design">
+<img src="https://s1.ax1x.com/2023/02/25/ppppWtK.png" width="45%" alt="design">
 
 
 ## Visualization
