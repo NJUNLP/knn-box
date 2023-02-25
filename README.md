@@ -12,10 +12,6 @@ kNN-box is an open-source toolkit to build kNN-MT models. We take inspiration fr
   - [Contributor](#contributor)
 
 
-## What's New
-- *February 2023* [Released code implementation of Simple and Scalable Nearest Neighbor Machine Translation](https://openreview.net/forum?id=uu1GBD9SlLe)
-
-
 ## Features
 * :dart: easy-to-use: a few lines of code to deploy a kNN-MT model
 * :telescope: research-oriented: provide implementations of various papers
@@ -233,7 +229,7 @@ If there is an elasticsearch-related error when executing the script, you may ne
 xpack.security.enabled: false
 ```
 </details>
-<img src="https://s1.ax1x.com/2022/11/22/z3Cpiq.png" width="80%" alt="design">
+<img src="https://s1.ax1x.com/2023/02/25/ppppWtK.png" width="80%" alt="design">
 
 
 ## Visualization
