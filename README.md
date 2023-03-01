@@ -4,11 +4,12 @@
 kNN-box is an open-source toolkit to build kNN-MT models. We take inspiration from the code of [kNN-LM](https://github.com/urvashik/knnlm) and [adaptive kNN-MT](https://github.com/zhengxxn/adaptive-knn-mt), and develope this more extensible toolkit based on [fairseq](https://github.com/facebookresearch/fairseq). Via kNN-box, users can easily implement different kNN-MT baseline models and further develope new models.
 
 - [:card\_file\_box: kNN-box](#card_file_box-knn-box)
-  - [What's New](#whats-new)
   - [Features](#features)
+  - [Citation](#citation)
   - [Requirements and Installation](#requirements-and-installation)
   - [Overview](#overview)
   - [Visualization](#visualization)
+  - [Benchmark](#benchmark)
   - [Contributor](#contributor)
 
 
@@ -17,7 +18,6 @@ kNN-box is an open-source toolkit to build kNN-MT models. We take inspiration fr
 * :telescope: research-oriented: provide implementations of various papers
 * :building_construction: extensible: easy to develope new kNN-MT models with our toolkit.
 * :bar_chart: visualized: the whole translation process of the kNN-MT can be visualized
-
 
 ## Requirements and Installation
 * python >= 3.7
@@ -53,6 +53,7 @@ Basically, there are two steps for runing a kNN-MT model: building datastore and
 * **retriever**: retrieve useful translation knowledge from the datastore
 * **combiner**: produce final prediction based on retrieval results and NMT model
 
+<img src="https://s1.ax1x.com/2023/02/25/ppppWtK.png" width="38%" alt="design">
 Users can easily develope different kNN-MT models by customizing three modules. This toolkit also provide example implementations of various popular kNN-MT models (listed below) and push-button scripts to run them, enabling researchers conveniently reproducing their experiment results:
 
 <!-- In this toolkit, we provide reference implementations of various papers: -->
@@ -229,7 +230,9 @@ If there is an elasticsearch-related error when executing the script, you may ne
 xpack.security.enabled: false
 ```
 </details>
-<img src="https://s1.ax1x.com/2023/02/25/ppppWtK.png" width="45%" alt="design">
+
+<img src="https://s1.ax1x.com/2023/03/01/ppi1Yse.png" width="100%" alt="benchmark">
+
 
 
 ## Visualization
@@ -251,13 +254,16 @@ Note: Regist your own tokenize function in src/tokenizer.py and then use it in m
 
 ![](https://s1.ax1x.com/2022/11/25/zY3djf.png)
 
-<!--
-## Benchmark
-Here are the [results (BLEU and speed)](knnbox/tutorials/markdowns/benchmark.md) obtained by using the knnbox toolkit to reproduce popular papers. -->
 
-
-
-## Contributor
-[Qianfeng Zhao](http://nlp.nju.edu.cn/homepage/people.html) :email: qianfeng@smail.nju.edu.cn  
-[Yunzhe Lv](http://nlp.nju.edu.cn/homepage/people.html) :email: lvyz@smail.nju.ed.cn   
-[Wenhao Zhu](https://owennju.github.io) :email: zhuwh@smail.nju.edu.cn 
+## Citation
+We now have a [paper](https://arxiv.org/abs/2302.13574) you can cite for the :card_file_box: knn-box toolkit:
+```bibtex
+@misc{zhu2023knnbox,
+      title={kNN-BOX: A Unified Framework for Nearest Neighbor Generation}, 
+      author={Wenhao Zhu and Qianfeng Zhao and Yunzhe Lv and Shujian Huang and Siheng Zhao and Sizhe Liu and Jiajun Chen},
+      year={2023},
+      eprint={2302.13574},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
