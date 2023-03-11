@@ -248,7 +248,9 @@ bash build_datastore_visual.sh
 vim model_configs.yml 
 # step 3. launch the web page
 bash start_app.sh
-# Optional: regist your own tokenize function in src/tokenizer.py and then use it in model_configs.yml if necessary
+
+# Optional: regist your own tokenize handler function in src/tokenizer.py 
+# and then use it as `--tokenizer` in model_configs.yml if necessary
 ```
 
 ![](https://s1.ax1x.com/2022/11/25/zY3djf.png)
