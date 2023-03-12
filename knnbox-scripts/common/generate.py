@@ -33,7 +33,7 @@ def main(args, override_args):
             args.results_path, "generate-{}.txt".format(args.gen_subset)
         )
         with open(output_path, "w", buffering=1, encoding="utf-8") as h:
-            return _main(args, h)
+            return _main(args, override_args, h)
     else:
         return _main(args, override_args, sys.stdout)
 
