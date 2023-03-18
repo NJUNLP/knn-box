@@ -7,11 +7,8 @@ import elasticsearch.helpers as helpers
 from knnbox.common_utils import global_vars
 
 class SimpleScalableRetriever:
-    def __init__(self, elastic_address, elastic_index_name, k):
+    def __init__(self, k):
         self.k = k
-        # connect to es
-        self.es = elasticsearch.Elasticsearch([elastic_address], request_timeout=3600)
-        self.es_index_name = elastic_index_name
         self.results = None
 
     
@@ -31,37 +28,58 @@ class SimpleScalableRetriever:
         if "distances" in return_list:
             ret["distances"] = torch.empty(batch_size, seq_len, k, dtype=torch.float, device=query.device)
 
-        query = query.squeeze(1)
-        for idx, q in enumerate(query):
-            try:
-                dynamic_datastore = global_vars()["encoderout_to_kv"][float(encoder_out_hash[idx])]
-            except:
-                nearest_dis = 1e5
-                nearest_key = ""
-                for h in global_vars()["encoderout_to_kv"].keys():
-                    if abs(float(encoder_out_hash[idx]) - h) < nearest_dis:
-                        nearest_dis = abs(float(encoder_out_hash[idx]) - h) 
-                        nearest_key = h
-                dynamic_datastore = global_vars()["encoderout_to_kv"][nearest_key]
-                print("--------------------fuck----------------------")
-            # because dynamic datastore is small, we dont use faiss
-            distances = torch.cdist(q.unsqueeze(0), dynamic_datastore["keys"])
-            distances = distances.squeeze(0)
-            sorted_distances, indices = torch.sort(distances)
-            # only retain k entry
-            if "keys" in return_list:
-                keys = dynamic_datastore["keys"][indices[:k]]
-                ret["keys"][idx][0] = keys 
-            if "vals" in return_list:
-                vals = dynamic_datastore["vals"][indices[:k]]
-                ret["vals"][idx][0] = vals
-            if "distances" in return_list:
-                ret["distances"][idx][0] = torch.square(sorted_distances[:k])
+        for sentence_idx, sentence in enumerate(query):
+            for pos, q in enumerate(sentence):
+                try:
+                    dynamic_datastore = global_vars()["encoderout_to_kv"][float(encoder_out_hash[sentence_idx])]
+                except:
+                    # It is almost impossible to go to this branch,
+                    # The main concern here is that using float as a key may lead to map misses
+                    print("---- WARNING: Map miss ----")
+                    nearest_dis = 1e5
+                    nearest_key = ""
+                    for h in global_vars()["encoderout_to_kv"].keys():
+                        if abs(float(encoder_out_hash[sentence_idx]) - h) < nearest_dis:
+                            nearest_dis = abs(float(encoder_out_hash[sentence_idx]) - h) 
+                            nearest_key = h
+                    dynamic_datastore = global_vars()["encoderout_to_kv"][nearest_key]
+                
+                if dynamic_datastore is not None:
+                    # because dynamic datastore is small, we dont use faiss
+                    distances = torch.cdist(q.unsqueeze(0), dynamic_datastore["keys"])
+                    distances = distances.squeeze(0)
+                    sorted_distances, indices = torch.sort(distances)
+
+                    if indices.shape[0] < k:
+                        # If the search result is less than k items (but not empty), 
+                        # we can add some items with a very large distance
+                        print("---- WARNING: Here a sentence retrieve less than ", k, " result ----")
+                        sorted_distances = torch.cat(
+                            (sorted_distances, 100000*torch.ones(k - sorted_distances.shape[0], dtype=torch.float, device=query.device)))
+                        indices = torch.cat(
+                            (indices, torch.zeros(k - indices.shape[0], dtype=torch.int64, device=query.device)))
+                        
+                    # only retain k items
+                    if "keys" in return_list:
+                        ret["keys"][sentence_idx][pos] = dynamic_datastore["keys"][indices[:k]]
+                    if "vals" in return_list:
+                        ret["vals"][sentence_idx][pos] = dynamic_datastore["vals"][indices[:k]]
+                    if "distances" in return_list:
+                        ret["distances"][sentence_idx][pos] = torch.square(sorted_distances[:k])
+                else:
+                    # if elasticsearch return empty result,
+                    # we return dummy `keys` and `vals` with very big `distance`
+                    if "keys" in return_list:
+                        ret["keys"][sentence_idx][pos] = torch.zeros(k, dim, dtype=query.dtype, device=query.device)
+                    if "vals" in return_list:
+                        ret["vals"][sentence_idx][pos] = torch.zeros(k, dtype=torch.int64, device=query.device)
+                    if "distances" in return_list:    
+                        ret["distances"][sentence_idx][pos] = 100000 * torch.ones(k, dtype=torch.float, device=query.device)
+
         
         self.results = ret
         
         return ret
-            
 
 
 

@@ -11,7 +11,7 @@ BASE_MODEL=$PROJECT_PATH/pretrain-models/wmt19.de-en/wmt19.de-en.ffn8192.pt
 DATA_PATH=$PROJECT_PATH/data-bin/it
 ELASTIC_INDEX_NAME=it
 
-CUDA_VISIBLE_DEVICES=3 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
+CUDA_VISIBLE_DEVICES=0 python $PROJECT_PATH/knnbox-scripts/common/generate.py $DATA_PATH \
 --task translation \
 --path $BASE_MODEL \
 --dataset-impl mmap \

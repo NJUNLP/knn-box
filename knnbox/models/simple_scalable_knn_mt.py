@@ -83,7 +83,7 @@ def vector_hash_func(x):
     Return:
         str[batch]
     """
-    return x[:,0,0]
+    return np.around(x[:,0,0].cpu().numpy(), decimals=6)
 
 
     
@@ -202,6 +202,11 @@ class SimpleScalableKNNMTEncoder(TransformerEncoder):
         encoder_out_hash = vector_hash_func(encoder_out[0].transpose(0,1))
         global_vars()["encoderout_to_kv"] = {}
         for i in range(len(src_tokens)):
+            if len(retrieve_results[i][0]) == 0:
+                global_vars()["encoderout_to_kv"][float(encoder_out_hash[i])] = None
+                print("---- WARNING: Here a sentence retrieved empty result: -----")
+                print("     > src: ", self.dictionary.string(src_tokens[i]))
+                continue
             # construct the model input
             source =  [torch.LongTensor([int(token) for token in s.split()]+[self.dictionary.eos()])
                         for s in retrieve_results[i][0]] 
@@ -251,9 +256,7 @@ class SimpleScalableKNNMTDecoder(TransformerDecoder):
         if args.knn_mode == "inference":
             # we access elasticsearch database through port 9200,
             # so here need no regular datastore
-            self.retriever = SimpleScalableRetriever(
-                                elastic_address="http://localhost:"+str(self.args.elastic_port),
-                                elastic_index_name=self.args.elastic_index_name, k=args.knn_k, )
+            self.retriever = SimpleScalableRetriever(k=args.knn_k, )
             self.combiner = SimpleScalableCombiner(
                 temperature=args.knn_temperature, probability_dim=len(dictionary))
 
