@@ -233,6 +233,10 @@ def train(args, trainer, task, epoch_itr):
 
     # reset epoch-level meters
     metrics.reset_meters("train")
+
+    if hasattr(trainer.model, "after_train_hook"):
+        trainer.model.after_train_hook()
+        
     return valid_losses, should_stop
 
 
